@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Webling</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="app">
+      <!-- Header -->
+      <header class="header">
+        <div class="avatar" id="avatar" aria-hidden="true"></div>
+        <div class="header-text">
+          <h1>Webling</h1>
+          <p id="headerStatus" class="muted">Your tiny web buddy</p>
+        </div>
+        <label class="switch" title="Turn Webling on or off everywhere">
+          <input id="enabled" type="checkbox" role="switch" aria-label="Webling enabled everywhere" />
+          <span class="track"><span class="thumb"></span></span>
+        </label>
+      </header>
+
+      <!-- Site bar -->
+      <section class="site card" aria-label="This site">
+        <div class="site-info">
+          <span class="dot" id="siteDot" aria-hidden="true"></span>
+          <div>
+            <strong id="siteHost">This page</strong>
+            <small id="siteNote" class="muted">Checking…</small>
+          </div>
+        </div>
+        <div class="site-actions">
+          <button id="siteToggle" class="btn btn-ghost btn-sm" type="button">Hide here</button>
+          <div class="menu-wrap">
+            <button id="snoozeBtn" class="btn btn-ghost btn-sm btn-icon" type="button" aria-haspopup="menu" aria-expanded="false" title="Snooze Webling">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1z"/></svg>
+            </button>
+            <div class="menu" id="snoozeMenu" role="menu" hidden>
+              <span class="menu-title">Snooze everywhere</span>
+              <button role="menuitem" type="button" data-snooze="30">30 minutes</button>
+              <button role="menuitem" type="button" data-snooze="60">1 hour</button>
+              <button role="menuitem" type="button" data-snooze="240">4 hours</button>
+              <button role="menuitem" type="button" data-snooze="tomorrow">Until tomorrow</button>
+              <button role="menuitem" type="button" data-snooze="0" id="unsnoozeBtn">Wake up now</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <button id="summonBtn" class="btn btn-primary btn-summon" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v6m0 0a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm-7 7H2m20 0h-3M5.6 5.6 4 4m14.4 1.6L20 4M6 18l-2 2m14-2 2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <span id="summonLabel">Summon Webling</span>
+        <kbd id="summonKey" class="kbd"></kbd>
+      </button>
+
+      <!-- Tabs -->
+      <nav class="tabs" role="tablist" aria-label="Sections">
+        <button class="tab" role="tab" id="t-today" aria-controls="p-today" aria-selected="true" tabindex="0">Today</button>
+        <button class="tab" role="tab" id="t-focus" aria-controls="p-focus" aria-selected="false" tabindex="-1">Focus</button>
+        <button class="tab" role="tab" id="t-progress" aria-controls="p-progress" aria-selected="false" tabindex="-1">Progress</button>
+        <button class="tab" role="tab" id="t-style" aria-controls="p-style" aria-selected="false" tabindex="-1">Style</button>
+        <button class="tab" role="tab" id="t-settings" aria-controls="p-settings" aria-selected="false" tabindex="-1">Settings</button>
+      </nav>
+
+      <!-- TODAY -->
+      <main class="panel" role="tabpanel" id="p-today" aria-labelledby="t-today">
+        <section class="card focus-mini">
+          <div class="mini-ring" aria-hidden="true">
+            <svg viewBox="0 0 36 36"><circle class="r-bg" cx="18" cy="18" r="15.5"/><circle class="r-fg" id="miniRing" cx="18" cy="18" r="15.5"/></svg>
+            <span>🎯</span>
+          </div>
+          <div class="grow">
+            <strong>Focus</strong>
+            <small id="miniFocusText" class="muted">Ready when you are</small>
+          </div>
+          <button id="miniFocusBtn" class="btn btn-primary btn-sm" type="button">Start 25m</button>
+        </section>
+
+        <section class="card water-card">
+          <div class="row">
+            <div class="grow">
+              <strong>Water</strong>
+              <small id="waterText" class="muted">0 of 8 glasses</small>
+            </div>
+            <button id="waterSub" class="btn btn-ghost btn-round" type="button" aria-label="Remove a glass">−</button>
+            <button id="waterAdd" class="btn btn-water btn-round" type="button" aria-label="Add a glass">+</button>
+          </div>
+          <div class="glasses" id="glasses" aria-hidden="true"></div>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <span class="label">This week</span>
+            <span class="legend"><i class="lg-focus"></i>Focus min <i class="lg-water"></i>Water</span>
+          </div>
+          <div class="week" id="weekChart" role="img" aria-label="Focus minutes and water glasses over the last 7 days"></div>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <span class="label">Page intel</span>
+            <button id="intelRefresh" class="link" type="button">Refresh</button>
+          </div>
+          <div class="intel" id="intel">
+            <div><strong id="iWords">—</strong><small>words</small></div>
+            <div><strong id="iRead">—</strong><small>min read</small></div>
+            <div><strong id="iLinks">—</strong><small>links</small></div>
+            <div><strong id="iHeads">—</strong><small>headings</small></div>
+            <div><strong id="iImgs">—</strong><small>images</small></div>
+          </div>
+          <small id="intelNote" class="muted note"></small>
+        </section>
+      </main>
+
+      <!-- FOCUS -->
+      <section class="panel" role="tabpanel" id="p-focus" aria-labelledby="t-focus" hidden>
+        <section class="card timer-card">
+          <div class="timer">
+            <svg viewBox="0 0 120 120" aria-hidden="true">
+              <circle class="t-bg" cx="60" cy="60" r="52"/>
+              <circle class="t-fg" id="timerRing" cx="60" cy="60" r="52"/>
+            </svg>
+            <div class="timer-center">
+              <span class="pill" id="timerStatus">Ready</span>
+              <span class="digits" id="timerDigits" aria-live="off">25:00</span>
+            </div>
+          </div>
+
+          <div class="presets" role="radiogroup" aria-label="Session length">
+            <button type="button" role="radio" class="preset" data-min="15">15</button>
+            <button type="button" role="radio" class="preset" data-min="25">25</button>
+            <button type="button" role="radio" class="preset" data-min="45">45</button>
+            <button type="button" role="radio" class="preset" data-min="60">60</button>
+            <label class="custom">
+              <span class="sr-only">Custom minutes</span>
+              <input id="customMin" type="number" min="1" max="180" step="1" inputmode="numeric" placeholder="min" />
+            </label>
+          </div>
+
+          <div class="timer-btns">
+            <button id="fStart" class="btn btn-primary" type="button">Start focus</button>
+            <button id="fPause" class="btn btn-secondary" type="button" hidden>Pause</button>
+            <button id="fResume" class="btn btn-primary" type="button" hidden>Resume</button>
+            <button id="fSkip" class="btn btn-secondary" type="button" hidden>Skip break</button>
+            <button id="fReset" class="btn btn-ghost" type="button" hidden>Reset</button>
+          </div>
+        </section>
+
+        <section class="card list">
+          <label class="item">
+            <span><strong>Auto-start a break</strong><small>Rest after each session</small></span>
+            <input type="checkbox" data-key="focusAutoBreak" class="toggle" />
+          </label>
+          <label class="item">
+            <span><strong>Break length</strong></span>
+            <select data-key="focusBreakDuration" data-num>
+              <option value="3">3 min</option><option value="5">5 min</option><option value="10">10 min</option><option value="15">15 min</option>
+            </select>
+          </label>
+          <label class="item">
+            <span><strong>Dim videos while focusing</strong><small>Makes videos less tempting</small></span>
+            <input type="checkbox" data-key="videoDimming" class="toggle" />
+          </label>
+          <label class="item">
+            <span><strong>Timer on toolbar icon</strong><small>Shows minutes left on the icon</small></span>
+            <input type="checkbox" data-key="toolbarBadge" class="toggle" />
+          </label>
+          <label class="item">
+            <span><strong>Timer on pages</strong><small>Floating countdown pill</small></span>
+            <input type="checkbox" data-key="showFocusIndicator" class="toggle" />
+          </label>
+        </section>
+      </section>
+
+      <!-- PROGRESS -->
+      <section class="panel" role="tabpanel" id="p-progress" aria-labelledby="t-progress" hidden>
+        <section class="card">
+          <span class="label">Career</span>
+          <div class="stats" id="stats"></div>
+        </section>
+        <section class="card">
+          <div class="card-head">
+            <span class="label">Achievements</span>
+            <span class="count" id="achCount">0/0</span>
+          </div>
+          <ul class="ach-list" id="achList"></ul>
+        </section>
+      </section>
+
+      <!-- STYLE -->
+      <section class="panel" role="tabpanel" id="p-style" aria-labelledby="t-style" hidden>
+        <section class="card">
+          <span class="label">Personality</span>
+          <div class="personas" role="radiogroup" aria-label="Personality" id="personas">
+            <button type="button" role="radio" class="persona" data-p="cheeky"><b>😏 Cheeky</b><small>Witty &amp; punny</small></button>
+            <button type="button" role="radio" class="persona" data-p="brave"><b>🦸 Brave</b><small>Heroic &amp; bold</small></button>
+            <button type="button" role="radio" class="persona" data-p="calm"><b>🍃 Calm</b><small>Zen &amp; gentle</small></button>
+          </div>
+          <p class="sample" id="personaSample"></p>
+        </section>
+
+        <section class="card list">
+          <div class="item">
+            <span><strong>Size</strong></span>
+            <div class="seg" role="radiogroup" aria-label="Size" data-seg="characterSize">
+              <button type="button" role="radio" data-v="small">S</button>
+              <button type="button" role="radio" data-v="medium">M</button>
+              <button type="button" role="radio" data-v="large">L</button>
+            </div>
+          </div>
+          <label class="item">
+            <span><strong>Starting corner</strong></span>
+            <select data-key="startPosition">
+              <option value="top-right">Top right</option><option value="top-left">Top left</option>
+              <option value="bottom-right">Bottom right</option><option value="bottom-left">Bottom left</option>
+            </select>
+          </label>
+          <label class="item">
+            <span><strong>Remember where I leave him</strong><small>Keeps your dragged position</small></span>
+            <input type="checkbox" data-key="rememberPosition" class="toggle" />
+          </label>
+          <label class="item">
+            <span><strong>Web line color</strong><small>Used when no reward line is equipped</small></span>
+            <input type="color" data-key="webLineColor" class="color" />
+          </label>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <span class="label">Rewards</span>
+            <span class="count" id="cosCount">0/0</span>
+          </div>
+          <div id="cosList" class="cos-groups"></div>
+        </section>
+      </section>
+
+      <!-- SETTINGS -->
+      <section class="panel" role="tabpanel" id="p-settings" aria-labelledby="t-settings" hidden>
+        <section class="card list">
+          <span class="label">On the page</span>
+          <label class="item"><span><strong>Speech bubbles</strong></span><input type="checkbox" data-key="showSpeechBubbles" class="toggle" /></label>
+          <label class="item"><span><strong>Quiet mode</strong><small>Only reply when you interact</small></span><input type="checkbox" data-key="quietMode" class="toggle" /></label>
+          <label class="item"><span><strong>Greet on new pages</strong><small>At most once every 20 minutes</small></span><input type="checkbox" data-key="greetOnPageLoad" class="toggle" /></label>
+          <label class="item"><span><strong>Tiny spider rescues</strong><small>Little friends dangle by sometimes</small></span><input type="checkbox" data-key="spidersEnabled" class="toggle" /></label>
+          <label class="item"><span><strong>Water widget</strong></span><input type="checkbox" data-key="showHydrationWidget" class="toggle" /></label>
+          <label class="item"><span><strong>Swing to page clicks</strong><small>Ignores links, buttons and inputs</small></span><input type="checkbox" data-key="swingToClicks" class="toggle" /></label>
+          <label class="item"><span><strong>Web-zip</strong><small>Double-click empty space to zip there</small></span><input type="checkbox" data-key="webZip" class="toggle" /></label>
+          <label class="item"><span><strong>Roam around</strong><small>Swings to random spots on his own</small></span>
+            <select data-key="wanderFrequency"><option value="off">Off</option><option value="calm">Calm</option><option value="normal">Normal</option><option value="hyper">Hyper</option></select>
+          </label>
+          <label class="item"><span><strong>Funny slips</strong></span>
+            <select data-key="mishapFrequency"><option value="off">Off</option><option value="rare">Rare</option><option value="normal">Normal</option><option value="frequent">Often</option></select>
+          </label>
+          <label class="item"><span><strong>Reduce motion</strong><small>No swaying or swinging arcs</small></span><input type="checkbox" data-key="reducedMotion" class="toggle" /></label>
+        </section>
+
+        <section class="card list">
+          <span class="label">Water &amp; reminders</span>
+          <label class="item"><span><strong>Daily goal</strong></span>
+            <select data-key="hydrationTarget" data-num>
+              <option value="4">4 glasses</option><option value="6">6 glasses</option><option value="8">8 glasses</option>
+              <option value="10">10 glasses</option><option value="12">12 glasses</option><option value="16">16 glasses</option>
+            </select>
+          </label>
+          <label class="item"><span><strong>Water reminders</strong></span><input type="checkbox" data-key="hydrationRemindersEnabled" class="toggle" /></label>
+          <label class="item"><span><strong>Remind every</strong></span>
+            <select data-key="hydrationReminderInterval" data-num>
+              <option value="30">30 min</option><option value="45">45 min</option><option value="60">1 hour</option><option value="90">90 min</option><option value="120">2 hours</option>
+            </select>
+          </label>
+          <label class="item"><span><strong>Quiet hours</strong><small>No reminders overnight</small></span><input type="checkbox" data-key="quietHoursEnabled" class="toggle" /></label>
+          <div class="item">
+            <span><strong>From – to</strong></span>
+            <span class="times">
+              <input type="time" data-key="quietHoursStart" aria-label="Quiet hours start" />
+              <input type="time" data-key="quietHoursEnd" aria-label="Quiet hours end" />
+            </span>
+          </div>
+          <label class="item"><span><strong>Desktop notifications</strong></span><input type="checkbox" data-key="notificationsEnabled" class="toggle" /></label>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <span class="label">Hidden on these sites</span>
+          </div>
+          <ul class="sites" id="sitesList"></ul>
+          <form class="add-site" id="addSiteForm">
+            <input id="addSiteInput" type="text" placeholder="example.com" aria-label="Add a site to hide Webling on" autocomplete="off" spellcheck="false" />
+            <button class="btn btn-secondary btn-sm" type="submit">Add</button>
+          </form>
+        </section>
+
+        <section class="card list">
+          <span class="label">Shortcuts</span>
+          <div class="item"><span>Summon Webling</span><kbd class="kbd" data-cmd="summon-webling"></kbd></div>
+          <div class="item"><span>Start / pause focus</span><kbd class="kbd" data-cmd="toggle-focus"></kbd></div>
+          <div class="item"><span>Open this popup</span><kbd class="kbd" data-cmd="_execute_action"></kbd></div>
+          <button id="shortcutsBtn" class="link" type="button">Change shortcuts…</button>
+        </section>
+
+        <section class="card">
+          <span class="label">Your data</span>
+          <p class="muted small">Everything stays in this browser. No accounts, no analytics, no servers.</p>
+          <div class="btn-row">
+            <button id="exportBtn" class="btn btn-secondary btn-sm" type="button">Export backup</button>
+            <button id="importBtn" class="btn btn-secondary btn-sm" type="button">Import backup</button>
+            <input id="importFile" type="file" accept="application/json,.json" hidden />
+          </div>
+          <div class="btn-row">
+            <button id="tourBtn" class="btn btn-ghost btn-sm" type="button">Replay the tour</button>
+          </div>
+        </section>
+
+        <section class="card danger">
+          <span class="label">Reset</span>
+          <div class="btn-col">
+            <button class="btn btn-danger-ghost btn-sm" type="button" data-reset="RESET_TODAY_HYDRATION" data-confirm="Set today's water back to 0?">Reset today's water</button>
+            <button class="btn btn-danger-ghost btn-sm" type="button" data-reset="RESET_FOCUS_STATS" data-confirm="Clear focus sessions, minutes and streaks?">Reset focus stats</button>
+            <button class="btn btn-danger-ghost btn-sm" type="button" data-reset="RESET_PROGRESS" data-confirm="Clear all stats, achievements and rewards?">Reset progress &amp; rewards</button>
+            <button class="btn btn-danger-ghost btn-sm" type="button" data-reset="RESET_SETTINGS" data-confirm="Restore every setting to its default?">Reset settings</button>
+            <button class="btn btn-danger btn-sm" type="button" data-reset="RESET_ALL" data-confirm="Erase ALL Webling data and start fresh? This can't be undone.">Erase everything</button>
+          </div>
+        </section>
+
+        <p class="version muted" id="version"></p>
+      </section>
+
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </div>
+
+    <script src="../shared/schema.js"></script>
+    <script src="../shared/dialogue.js"></script>
+    <script src="../shared/progression.js"></script>
+    <script src="../shared/sprite-pixels.js"></script>
+    <script src="../shared/sprite.js"></script>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

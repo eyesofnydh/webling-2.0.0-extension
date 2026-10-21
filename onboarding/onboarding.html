@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Welcome to Webling</title>
+    <link rel="stylesheet" href="onboarding.css" />
+  </head>
+  <body>
+    <main class="tour" aria-labelledby="tourTitle">
+      <header class="top">
+        <span class="brand"><span class="brand-icon" id="brandIcon" aria-hidden="true"></span>Webling</span>
+        <button id="skip" class="btn btn-ghost" type="button">Skip tour</button>
+      </header>
+
+      <div class="stage" aria-live="polite">
+        <section class="step" data-step="0">
+          <div class="art art-hero">
+            <div class="thread" aria-hidden="true"></div>
+            <div class="hero-sprite" id="heroSprite" aria-hidden="true"></div>
+          </div>
+          <h1 id="tourTitle">Meet Webling</h1>
+          <p>A tiny, friendly spider who hangs out on your web pages. He swings, chats, cheers you on — and never gets in the way of what you're doing.</p>
+        </section>
+
+        <section class="step" data-step="1" hidden>
+          <div class="art art-keys">
+            <div class="keys"><kbd id="kSummon">Alt</kbd></div>
+            <p class="caption">Summon him on any page</p>
+          </div>
+          <h2>Summon, drag &amp; play</h2>
+          <p>Press the shortcut or hit <b>Summon</b> in the toolbar popup. Drag Webling anywhere, click him to swing, or focus him with <kbd>Tab</kbd> and use the arrow keys.</p>
+        </section>
+
+        <section class="step" data-step="2" hidden>
+          <div class="art art-timer">
+            <div class="mock-pill"><span class="ring"></span><b>FOCUS</b><span class="mono">24:59</span></div>
+            <p class="caption">A calm timer that keeps running when you close the popup</p>
+          </div>
+          <h2>Focus sessions</h2>
+          <p>Start a 15–60 minute session (or any length up to 3 hours). Webling quiets down, shows a small timer on the page and on the toolbar icon, then takes a break with you.</p>
+        </section>
+
+        <section class="step" data-step="3" hidden>
+          <div class="art art-rewards">
+            <div class="row-icons">
+              <span class="chip">💧 Water</span><span class="chip" id="babyChip">Rescues</span><span class="chip">🏆 Rewards</span>
+            </div>
+            <div class="themes" id="themeRow" aria-hidden="true"></div>
+          </div>
+          <h2>Water, rescues &amp; rewards</h2>
+          <p>Log glasses of water, rescue the tiny spiders that dangle by now and then, and unlock new colors, accessories and web lines as you go.</p>
+        </section>
+
+        <section class="step" data-step="4" hidden>
+          <div class="art art-privacy">
+            <div class="shield" aria-hidden="true">🛡️</div>
+            <ul class="checks">
+              <li>No accounts</li><li>No analytics or tracking</li><li>No servers — everything stays in your browser</li>
+            </ul>
+          </div>
+          <h2>Private by design</h2>
+          <p>Hide Webling on any site with one click, snooze him for a while, or switch him off entirely from the popup.</p>
+          <label class="persona-pick">
+            <span>Pick his personality:</span>
+            <select id="personality">
+              <option value="cheeky">😏 Cheeky</option>
+              <option value="brave">🦸 Brave</option>
+              <option value="calm">🍃 Calm</option>
+            </select>
+          </label>
+        </section>
+      </div>
+
+      <footer class="nav">
+        <div class="dots" id="dots" role="group" aria-label="Tour steps"></div>
+        <div class="nav-btns">
+          <button id="back" class="btn btn-ghost" type="button">Back</button>
+          <button id="next" class="btn btn-primary" type="button">Next</button>
+        </div>
+      </footer>
+    </main>
+
+    <script src="../shared/schema.js"></script>
+    <script src="../shared/sprite-pixels.js"></script>
+    <script src="../shared/sprite.js"></script>
+    <script type="module" src="onboarding.js"></script>
+  </body>
+</html>
