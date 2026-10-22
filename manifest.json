@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extName__",
-  "short_name": "Webling",
+  "short_name": "Spider-Buddy",
   "version": "2.0.0",
   "description": "__MSG_extDescription__",
   "default_locale": "en",
@@ -20,7 +20,7 @@
     "128": "assets/icons/icon-128.png"
   },
   "action": {
-    "default_title": "Webling",
+    "default_title": "Spider-Buddy",
     "default_popup": "popup/popup.html",
     "default_icon": {
       "16": "assets/icons/icon-16.png",
@@ -54,13 +54,13 @@
       "suggested_key": {
         "default": "Alt+Shift+W"
       },
-      "description": "Open the Webling popup"
+      "description": "Open the Spider-Buddy popup"
     },
     "summon-webling": {
       "suggested_key": {
         "default": "Alt+Shift+S"
       },
-      "description": "Summon Webling on this page"
+      "description": "Summon Spider-Buddy on this page"
     },
     "toggle-focus": {
       "suggested_key": {

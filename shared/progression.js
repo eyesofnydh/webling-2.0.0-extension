@@ -54,10 +54,7 @@
     { id: 'webline-gold', name: 'Golden Strand', description: 'A shimmering gold web line', category: 'webline', icon: '🟡', requirement: 'Rescue 25 tiny spiders', value: 'linear-gradient(180deg,#fff1b8,#f5b524)', progress: (s) => [n(s, 'spiderScore'), 25] },
     { id: 'webline-rainbow', name: 'Prismatic Web', description: 'A dazzling rainbow web line', category: 'webline', icon: '🌈', requirement: 'Rescue 50 tiny spiders', value: 'linear-gradient(180deg,#ff5d73,#ffb547,#5be38b,#4fb8ff,#a77bff)', progress: (s) => [n(s, 'spiderScore'), 50] },
 
-    { id: 'theme-midnight', name: 'Midnight', description: 'Deep navy with a golden headband', category: 'theme', icon: '🌙', requirement: 'Complete 3 focus sessions', value: 'midnight', progress: (s) => [n(s, 'focusSessionsCompleted'), 3] },
-    { id: 'theme-sunset', name: 'Sunset Glow', description: 'Warm coral with a sunny headband', category: 'theme', icon: '🌅', requirement: 'Complete 10 focus sessions', value: 'sunset', progress: (s) => [n(s, 'focusSessionsCompleted'), 10] },
-    { id: 'theme-spidey', name: 'Spider-Man', description: 'Pixel-art Spider-Man that swings and hangs', category: 'theme', icon: '🕷️', requirement: 'Summon Webling once', value: 'spidey', progress: (s) => [n(s, 'summonCount'), 1] },
-    { id: 'theme-forest', name: 'Forest Friend', description: 'Leafy green with an amber headband', category: 'theme', icon: '🌿', requirement: 'Meet your water goal 3 days in a row', value: 'forest', progress: (s) => [n(s, 'hydrationBestStreak'), 3] },
+    { id: 'theme-spidey', name: 'Spider-Man', description: 'Pixel-art Spider-Man that swings and hangs', category: 'theme', icon: '🕷️', requirement: 'Ready from the start', value: 'spidey', progress: () => [1, 1] },
 
     { id: 'bubble-pixel', name: 'Pixel Talk', description: 'A retro pixel speech bubble', category: 'bubble', icon: '👾', requirement: 'Complete your first daily water goal', value: 'pixel', progress: (s) => [n(s, 'hydrationGoalsCompleted'), 1] },
     { id: 'bubble-night', name: 'Night Owl', description: 'A dark, glowing speech bubble', category: 'bubble', icon: '🦉', requirement: 'Summon Webling 10 times', value: 'night', progress: (s) => [n(s, 'summonCount'), 10] },

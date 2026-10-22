@@ -1,10 +1,10 @@
 {
   "extName": {
-    "message": "Webling — Tiny Web Buddy",
+    "message": "Spider-Buddy",
     "description": "Extension name shown in the Chrome Web Store and toolbar."
   },
   "extDescription": {
-    "message": "A cute spider buddy for your pages — with a focus timer, water tracker, spider rescues and unlockable styles. 100% local.",
+    "message": "A friendly Spider-Man buddy for your pages — reminds you to focus and drink water, swings around, and rescues spiders. 100% local.",
     "description": "Short description (max 132 characters)."
   }
 }

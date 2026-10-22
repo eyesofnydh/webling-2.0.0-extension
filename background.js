@@ -1,5 +1,5 @@
 /**
- * Webling — background service worker (Manifest V3).
+ * Spider-Buddy — background service worker (Manifest V3).
  *
  * Owns all writes to chrome.storage.local. Every mutation goes through
  * `update()`, which serialises read-modify-write cycles so rapid clicks
@@ -141,8 +141,8 @@ async function refreshBadge(state) {
     if (text) await chrome.action.setBadgeBackgroundColor({ color: BADGE_COLORS[s.focusStatus] || BADGE_COLORS.running });
     if (text && chrome.action.setBadgeTextColor) await chrome.action.setBadgeTextColor({ color: '#ffffff' });
     const title = s.focusStatus === 'idle'
-      ? 'Webling'
-      : `Webling — ${s.focusStatus === 'break' ? 'break' : 'focus'} ${Schema.formatClock(Schema.focusRemainingMs(s))}${s.focusStatus === 'paused' ? ' (paused)' : ''}`;
+      ? 'Spider-Buddy'
+      : `Spider-Buddy — ${s.focusStatus === 'break' ? 'break' : 'focus'} ${Schema.formatClock(Schema.focusRemainingMs(s))}${s.focusStatus === 'paused' ? ' (paused)' : ''}`;
     await chrome.action.setTitle({ title });
   } catch {
     /* action API unavailable in tests */
@@ -435,7 +435,7 @@ async function summonInActiveTab() {
   // tab.url is visible thanks to activeTab (popup click / shortcut). If it's
   // unknown we still try — injection fails cleanly on restricted pages.
   if (!tab || !tab.id || (tab.url && !isPageUrl(tab.url))) return { success: false, reason: 'unsupported_page' };
-  // Summoning is an explicit request: wake Webling everywhere it's asleep for this tab.
+  // Summoning is an explicit request: wake Spider-Buddy everywhere it's asleep for this tab.
   await update((s) => {
     const patch = {};
     if (!s.enabled) patch.enabled = true;
@@ -741,7 +741,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   handler(message, sender)
     .then(sendResponse)
     .catch((err) => {
-      console.error('[Webling]', message.type, err);
+      console.error('[Spider-Buddy]', message.type, err);
       sendResponse({ success: false, error: String((err && err.message) || err) });
     });
   return true;

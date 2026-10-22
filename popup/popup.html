@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
-    <title>Webling</title>
+    <title>Spider-Buddy</title>
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
@@ -13,11 +13,11 @@
       <header class="header">
         <div class="avatar" id="avatar" aria-hidden="true"></div>
         <div class="header-text">
-          <h1>Webling</h1>
+          <h1>Spider-Buddy</h1>
           <p id="headerStatus" class="muted">Your tiny web buddy</p>
         </div>
-        <label class="switch" title="Turn Webling on or off everywhere">
-          <input id="enabled" type="checkbox" role="switch" aria-label="Webling enabled everywhere" />
+        <label class="switch" title="Turn Spider-Buddy on or off everywhere">
+          <input id="enabled" type="checkbox" role="switch" aria-label="Spider-Buddy enabled everywhere" />
           <span class="track"><span class="thumb"></span></span>
         </label>
       </header>
@@ -34,7 +34,7 @@
         <div class="site-actions">
           <button id="siteToggle" class="btn btn-ghost btn-sm" type="button">Hide here</button>
           <div class="menu-wrap">
-            <button id="snoozeBtn" class="btn btn-ghost btn-sm btn-icon" type="button" aria-haspopup="menu" aria-expanded="false" title="Snooze Webling">
+            <button id="snoozeBtn" class="btn btn-ghost btn-sm btn-icon" type="button" aria-haspopup="menu" aria-expanded="false" title="Snooze Spider-Buddy">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1z"/></svg>
             </button>
             <div class="menu" id="snoozeMenu" role="menu" hidden>
@@ -51,7 +51,7 @@
 
       <button id="summonBtn" class="btn btn-primary btn-summon" type="button">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v6m0 0a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm-7 7H2m20 0h-3M5.6 5.6 4 4m14.4 1.6L20 4M6 18l-2 2m14-2 2 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        <span id="summonLabel">Summon Webling</span>
+        <span id="summonLabel">Summon Spider-Buddy</span>
         <kbd id="summonKey" class="kbd"></kbd>
       </button>
 
@@ -194,7 +194,8 @@
         <section class="card">
           <span class="label">Personality</span>
           <div class="personas" role="radiogroup" aria-label="Personality" id="personas">
-            <button type="button" role="radio" class="persona" data-p="cheeky"><b>😏 Cheeky</b><small>Witty &amp; punny</small></button>
+            <button type="button" role="radio" class="persona" data-p="spidey"><b>🕷️ Spidey</b><small>Heroic &amp; friendly</small></button>
+          <button type="button" role="radio" class="persona" data-p="cheeky"><b>😏 Cheeky</b><small>Witty &amp; punny</small></button>
             <button type="button" role="radio" class="persona" data-p="brave"><b>🦸 Brave</b><small>Heroic &amp; bold</small></button>
             <button type="button" role="radio" class="persona" data-p="calm"><b>🍃 Calm</b><small>Zen &amp; gentle</small></button>
           </div>
@@ -246,6 +247,7 @@
           <label class="item"><span><strong>Tiny spider rescues</strong><small>Little friends dangle by sometimes</small></span><input type="checkbox" data-key="spidersEnabled" class="toggle" /></label>
           <label class="item"><span><strong>Water widget</strong></span><input type="checkbox" data-key="showHydrationWidget" class="toggle" /></label>
           <label class="item"><span><strong>Swing to page clicks</strong><small>Ignores links, buttons and inputs</small></span><input type="checkbox" data-key="swingToClicks" class="toggle" /></label>
+          <label class="item"><span><strong>Focus nudges</strong><small>Reminds you to stay focused now and then</small></span><input type="checkbox" data-key="focusNudges" class="toggle" /></label>
           <label class="item"><span><strong>Web-zip</strong><small>Double-click empty space to zip there</small></span><input type="checkbox" data-key="webZip" class="toggle" /></label>
           <label class="item"><span><strong>Roam around</strong><small>Swings to random spots on his own</small></span>
             <select data-key="wanderFrequency"><option value="off">Off</option><option value="calm">Calm</option><option value="normal">Normal</option><option value="hyper">Hyper</option></select>
@@ -287,14 +289,14 @@
           </div>
           <ul class="sites" id="sitesList"></ul>
           <form class="add-site" id="addSiteForm">
-            <input id="addSiteInput" type="text" placeholder="example.com" aria-label="Add a site to hide Webling on" autocomplete="off" spellcheck="false" />
+            <input id="addSiteInput" type="text" placeholder="example.com" aria-label="Add a site to hide Spider-Buddy on" autocomplete="off" spellcheck="false" />
             <button class="btn btn-secondary btn-sm" type="submit">Add</button>
           </form>
         </section>
 
         <section class="card list">
           <span class="label">Shortcuts</span>
-          <div class="item"><span>Summon Webling</span><kbd class="kbd" data-cmd="summon-webling"></kbd></div>
+          <div class="item"><span>Summon Spider-Buddy</span><kbd class="kbd" data-cmd="summon-webling"></kbd></div>
           <div class="item"><span>Start / pause focus</span><kbd class="kbd" data-cmd="toggle-focus"></kbd></div>
           <div class="item"><span>Open this popup</span><kbd class="kbd" data-cmd="_execute_action"></kbd></div>
           <button id="shortcutsBtn" class="link" type="button">Change shortcuts…</button>
@@ -320,7 +322,7 @@
             <button class="btn btn-danger-ghost btn-sm" type="button" data-reset="RESET_FOCUS_STATS" data-confirm="Clear focus sessions, minutes and streaks?">Reset focus stats</button>
             <button class="btn btn-danger-ghost btn-sm" type="button" data-reset="RESET_PROGRESS" data-confirm="Clear all stats, achievements and rewards?">Reset progress &amp; rewards</button>
             <button class="btn btn-danger-ghost btn-sm" type="button" data-reset="RESET_SETTINGS" data-confirm="Restore every setting to its default?">Reset settings</button>
-            <button class="btn btn-danger btn-sm" type="button" data-reset="RESET_ALL" data-confirm="Erase ALL Webling data and start fresh? This can't be undone.">Erase everything</button>
+            <button class="btn btn-danger btn-sm" type="button" data-reset="RESET_ALL" data-confirm="Erase ALL Spider-Buddy data and start fresh? This can't be undone.">Erase everything</button>
           </div>
         </section>
 

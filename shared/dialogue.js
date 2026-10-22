@@ -230,6 +230,79 @@
       styleChange: ['A new color, like seasons.', 'Change is gentle and good.'],
       personalityChange: ['Breathe in… calm mode.', 'Stillness, welcome back.'],
     },
+
+    spidey: {
+      greeting: [
+        'Your friendly neighborhood tab-watcher!',
+        'Spidey senses tingling — new page!',
+        'Web-slinging in, just for you.',
+        'Hey there! Keeping this tab safe.',
+        'Up, up, and... okay, just hanging here.',
+      ],
+      summon: [
+        'Spidey, reporting for duty!',
+        'Did somebody call for a hero?',
+        'Thwip! Here I am.',
+        'Your neighborhood spider has arrived!',
+        'Swinging in — what do you need?',
+      ],
+      interact: [
+        'With great clicking comes great responsibility!',
+        'Thwip! Nice aim.',
+        'Easy there, tiger.',
+        'Spidey-five! Up top!',
+        'You and me, team-up of the century.',
+        'Careful, my spider-sense is ticklish!',
+      ],
+      focusStart: [
+        'Eyes on the goal — stay focused, hero!',
+        "Lock in. I've got your back.",
+        'No distractions get past this web.',
+        'Time to focus. Great power, remember?',
+      ],
+      focusPause: [
+        'Taking a breather? Even heroes do.',
+        "Paused. I'll keep watch.",
+        'Quick rest, then back to saving the day.',
+      ],
+      focusResume: ['Back in action!', "Let's finish strong, partner."],
+      focusComplete: [
+        'You did it! Hero of the hour.',
+        'Session saved the city — nice work!',
+        'That focus? Totally heroic.',
+        "Great power, great focus. I'm proud.",
+      ],
+      breakOver: ["Break's done — suit back up!", "Rested? Let's swing back to it!"],
+      hydrationReminder: [
+        'Hydrate, hero! Drink some water.',
+        'Even Spider-Man needs water — take a sip!',
+        "Spidey-sense says: you're thirsty. Drink up!",
+        'Water break! Keep that hero body going.',
+        'Stay hydrated to stay heroic. Sip sip!',
+      ],
+      hydrationLogged: ['Nice sip! {count}/{target}.', 'Hydration up! {count}/{target}, champ.'],
+      hydrationComplete: [
+        'Fully hydrated — hero fuel topped up!',
+        'Water goal smashed. Peak Spidey form!',
+        'All watered up. Great power needs great hydration!',
+      ],
+      spiderRescue: [
+        'Saved a little spider pal! ({score})',
+        'Another one rescued — we look out for our own. ({score})',
+        'Hero move! The web remembers. ({score})',
+      ],
+      rewardUnlock: ['New gear unlocked: {name}!', 'Suit upgrade: {name}!'],
+      achievement: ['Achievement unlocked: {name}! Heroic.', '{name}! The Bugle will want photos.'],
+      slip: ['Whoa — web malfunction!', 'Not so heroic right now—', 'Thwip fail!'],
+      slipRecovery: [
+        'Stuck the landing. Mostly.',
+        'Heroes always bounce back!',
+        'Saw that? Totally on purpose.',
+      ],
+      encouragement: ["You've got this, hero.", 'Eyes on the prize — stay focused!', 'Great power, great focus. Keep going!', 'Psst — back to the mission, hero.', 'Keep swinging — I believe in you!'],
+      styleChange: ['New suit, who dis?', 'Looking heroic!'],
+      personalityChange: ['Spidey mode: activated!', 'Your friendly neighborhood spider is back!'],
+    },
   };
 
   /** Categories Webling may say even in quiet mode (direct feedback to the user). */

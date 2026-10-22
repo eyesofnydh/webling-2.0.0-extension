@@ -13,7 +13,7 @@
 
   const SCHEMA_VERSION = 3;
 
-  const PERSONALITIES = ['cheeky', 'brave', 'calm'];
+  const PERSONALITIES = ['spidey', 'cheeky', 'brave', 'calm'];
   const CHARACTER_SIZES = ['small', 'medium', 'large'];
   const POSITIONS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
   const MISHAP_FREQS = ['off', 'rare', 'normal', 'frequent'];
@@ -31,7 +31,7 @@
   const SETTING_KEYS = [
     'enabled', 'personality', 'characterSize', 'startPosition', 'rememberPosition',
     'swingToClicks', 'showFocusIndicator', 'showHydrationWidget', 'spidersEnabled',
-    'showSpeechBubbles', 'quietMode', 'greetOnPageLoad', 'mishapFrequency', 'wanderFrequency', 'webZip',
+    'showSpeechBubbles', 'quietMode', 'greetOnPageLoad', 'mishapFrequency', 'wanderFrequency', 'webZip', 'focusNudges',
     'webLineColor', 'reducedMotion', 'notificationsEnabled', 'toolbarBadge',
     'hydrationRemindersEnabled', 'hydrationReminderInterval', 'hydrationTarget',
     'quietHoursEnabled', 'quietHoursStart', 'quietHoursEnd', 'videoDimming',
@@ -44,7 +44,7 @@
   const DEFAULTS = Object.freeze({
     // — Settings —
     enabled: true,
-    personality: 'cheeky',
+    personality: 'spidey',
     characterSize: 'medium',
     startPosition: 'top-right',
     rememberPosition: true,
@@ -58,11 +58,12 @@
     mishapFrequency: 'rare',
     wanderFrequency: 'off',
     webZip: true,
+    focusNudges: true,
     webLineColor: '#e9f2ff',
     reducedMotion: false,
     notificationsEnabled: true,
     toolbarBadge: true,
-    hydrationRemindersEnabled: false,
+    hydrationRemindersEnabled: true,
     hydrationReminderInterval: 60,
     hydrationTarget: 8,
     quietHoursEnabled: true,
@@ -105,8 +106,8 @@
 
     // — Progression —
     achievements: Object.freeze({}),
-    cosmeticsUnlocked: Object.freeze([]),
-    equippedCosmetics: Object.freeze({}),
+    cosmeticsUnlocked: Object.freeze(['theme-spidey']),
+    equippedCosmetics: Object.freeze({ theme: 'theme-spidey' }),
 
     // — Misc —
     lastPosition: null,
@@ -329,6 +330,7 @@
     mishapFrequency: V.oneOf(MISHAP_FREQS),
     wanderFrequency: V.oneOf(WANDER_FREQS),
     webZip: V.bool(),
+    focusNudges: V.bool(),
     webLineColor: V.color(),
     reducedMotion: V.bool(),
     notificationsEnabled: V.bool(),

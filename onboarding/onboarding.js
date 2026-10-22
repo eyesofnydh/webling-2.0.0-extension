@@ -1,4 +1,4 @@
-/** Webling — first-run tour. */
+/** Spider-Buddy — first-run tour. */
 
 const Sprite = globalThis.WeblingSprite;
 const $ = (id) => document.getElementById(id);
@@ -7,11 +7,11 @@ const steps = [...document.querySelectorAll('.step')];
 const dots = $('dots');
 let current = 0;
 
-$('heroSprite').innerHTML = Sprite.frameSvg('idle', 'classic', { uid: 'tour-hero' });
+$('heroSprite').innerHTML = Sprite.frameSvg('idle', 'spidey', { uid: 'tour-hero' });
 $('brandIcon').innerHTML = Sprite.iconSvg(48);
 $('babyChip').insertAdjacentHTML('afterbegin', Sprite.babySpiderSvg(18));
-$('themeRow').innerHTML = ['classic', 'midnight', 'sunset', 'forest']
-  .map((p, i) => Sprite.frameSvg(i % 2 ? 'celebrate' : 'idle', p, { uid: `tour-${p}`, acc: ['', 'crown', 'flower', 'star'][i] }))
+$('themeRow').innerHTML = ['idle', 'anticipate', 'flight', 'celebrate']
+  .map((frame, i) => Sprite.frameSvg(frame, 'spidey', { uid: `tour-${i}` }))
   .join('');
 
 steps.forEach((_, i) => {

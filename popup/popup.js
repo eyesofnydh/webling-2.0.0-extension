@@ -1,5 +1,5 @@
 /**
- * Webling — toolbar popup.
+ * Spider-Buddy — toolbar popup.
  * Reads state from the background, renders it, and sends user changes back.
  * Stays live via chrome.storage.onChanged.
  */
@@ -30,7 +30,7 @@ async function send(message) {
   try {
     return await chrome.runtime.sendMessage(message);
   } catch (err) {
-    console.warn('[Webling popup]', message.type, err);
+    console.warn('[Spider-Buddy popup]', message.type, err);
     return null;
   }
 }
@@ -147,7 +147,7 @@ function renderSite() {
 
   if (!state.enabled) {
     dot.className = 'dot off';
-    note.textContent = 'Webling is switched off';
+    note.textContent = 'Spider-Buddy is switched off';
     $('summonLabel').textContent = 'Turn on & summon';
   } else if (snoozed) {
     dot.className = 'dot warn';
@@ -160,7 +160,7 @@ function renderSite() {
   } else {
     dot.className = 'dot';
     note.textContent = 'Patrolling this page';
-    $('summonLabel').textContent = 'Summon Webling';
+    $('summonLabel').textContent = 'Summon Spider-Buddy';
   }
   toggle.textContent = entry ? 'Show here' : 'Hide here';
   toggle.disabled = !state.enabled;
@@ -335,7 +335,7 @@ function renderSettings() {
 
   const list = $('sitesList');
   if (state.disabledSites.length === 0) {
-    list.innerHTML = '<li class="empty">None — Webling visits every site.</li>';
+    list.innerHTML = '<li class="empty">None — Spider-Buddy visits every site.</li>';
   } else {
     list.replaceChildren(...state.disabledSites.map((h) => {
       const li = document.createElement('li');
@@ -344,7 +344,7 @@ function renderSettings() {
       const b = document.createElement('button');
       b.type = 'button';
       b.textContent = '×';
-      b.setAttribute('aria-label', `Show Webling on ${h} again`);
+      b.setAttribute('aria-label', `Show Spider-Buddy on ${h} again`);
       b.addEventListener('click', () => send({ type: 'REMOVE_SITE', hostname: h }));
       li.append(span, b);
       return li;
@@ -394,7 +394,7 @@ function bind() {
   $('siteToggle').addEventListener('click', async () => {
     const hidden = Boolean(Schema.findDisablingEntry(host, state.disabledSites));
     const resp = await send({ type: 'TOGGLE_SITE', hostname: host, disabled: !hidden });
-    if (resp && resp.success) toast(hidden ? `Webling is back on ${host}` : `Hidden on ${host}`);
+    if (resp && resp.success) toast(hidden ? `Spider-Buddy is back on ${host}` : `Hidden on ${host}`);
   });
 
   // Snooze menu
@@ -420,14 +420,14 @@ function bind() {
       }
       closeMenu();
       await send({ type: 'SNOOZE', minutes });
-      toast(minutes ? 'Webling is snoozing 💤' : 'Webling is awake!');
+      toast(minutes ? 'Spider-Buddy is snoozing 💤' : 'Spider-Buddy is awake!');
     });
   }
 
   $('summonBtn').addEventListener('click', async () => {
     const resp = await send({ type: 'SUMMON_WEBLING' });
     if (resp && resp.success) window.close();
-    else toast("Webling can't visit this page");
+    else toast("Spider-Buddy can't visit this page");
   });
 
   // Today
@@ -556,9 +556,9 @@ async function importData(e) {
     toast('Not a valid backup file');
     return;
   }
-  if (!window.confirm('Replace all current Webling data with this backup?')) return;
+  if (!window.confirm('Replace all current Spider-Buddy data with this backup?')) return;
   const resp = await send({ type: 'IMPORT_DATA', data });
-  toast(resp && resp.success ? 'Backup restored' : 'Not a Webling backup');
+  toast(resp && resp.success ? 'Backup restored' : 'Not a Spider-Buddy backup');
 }
 
 // ---------------------------------------------------------------------------
@@ -577,7 +577,7 @@ async function loadShortcuts() {
 async function init() {
   setupTabs();
   bind();
-  $('version').textContent = `Webling ${chrome.runtime.getManifest().version}`;
+  $('version').textContent = `Spider-Buddy ${chrome.runtime.getManifest().version}`;
 
   const resp = await send({ type: 'GET_STATE' });
   if (resp && resp.success) state = resp.data;

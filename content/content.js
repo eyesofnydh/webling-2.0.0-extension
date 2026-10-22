@@ -1,9 +1,9 @@
 /**
- * Webling — on-page companion (content script, classic).
+ * Spider-Buddy — on-page companion (content script, classic).
  *
  * Loaded after shared/schema.js, shared/dialogue.js, shared/progression.js
  * and shared/sprite.js (see manifest). Everything renders inside a closed
- * Shadow DOM so page styles and Webling never affect each other.
+ * Shadow DOM so page styles and Spider-Buddy never affect each other.
  *
  * State flow: chrome.storage.local is the single source of truth. This
  * script reads it once, then applies chrome.storage.onChanged deltas.
@@ -117,7 +117,7 @@
         <button class="water-btn water-add" type="button" aria-label="Add a glass of water">${ICONS.plus}</button>
       </div>
 
-      <div class="buddy" role="button" tabindex="0" aria-label="Webling, your tiny web hero. Press Enter to make him swing." data-pose="idle">
+      <div class="buddy" role="button" tabindex="0" aria-label="Spider-Buddy, your tiny web hero. Press Enter to make him swing." data-pose="idle">
         <div class="bubble" role="status" aria-live="polite"></div>
         <div class="motion">
           <div class="sway">
@@ -175,6 +175,7 @@
   let focusTicker = 0;
   let mishapTimer = 0;
   let wanderTimer = 0;
+  let nudgeTimer = 0;
   let spiderTimer = 0;
   let bubbleTimer = 0;
   let activeSpider = null;
@@ -366,7 +367,7 @@
     later(() => { fx.innerHTML = ''; }, 900);
   }
 
-  /** Turns Webling to face a horizontal travel distance (ignores tiny moves). */
+  /** Turns Spider-Buddy to face a horizontal travel distance (ignores tiny moves). */
   function face(dx) {
     if (Math.abs(dx) > 4) buddy.classList.toggle('facing-left', dx < 0);
   }
@@ -555,6 +556,21 @@
     scheduleWander();
   }
 
+  // Occasional spoken "stay focused / keep going" nudge while you browse.
+  function scheduleNudge() {
+    cancel(nudgeTimer);
+    if (!state.focusNudges || !active) return;
+    nudgeTimer = later(runNudge, (240 + Math.random() * 300) * 1000); // every 4–9 min
+  }
+
+  function runNudge() {
+    const blocked = !active || document.hidden || anim || dragState
+      || state.quietMode || !state.showSpeechBubbles
+      || state.focusStatus === 'running' || state.focusStatus === 'break';
+    if (!blocked) speak('encouragement', null, 3600);
+    scheduleNudge();
+  }
+
   // ---------------------------------------------------------------------------
   // Mishaps
   // ---------------------------------------------------------------------------
@@ -726,11 +742,13 @@
       place(pos.x, pos.y);
       scheduleMishap();
       scheduleWander();
+      scheduleNudge();
       scheduleSpider(true);
     } else if (!active && wasActive) {
       stopMotion();
       cancel(mishapTimer);
       cancel(wanderTimer);
+      cancel(nudgeTimer);
       cancel(spiderTimer);
       removeSpider();
       bubble.classList.remove('show');
@@ -740,6 +758,7 @@
       if (prev.characterSize !== state.characterSize) place(pos.x, pos.y);
       if (prev.mishapFrequency !== state.mishapFrequency) scheduleMishap();
       if (prev.wanderFrequency !== state.wanderFrequency) scheduleWander();
+      if (prev.focusNudges !== state.focusNudges) scheduleNudge();
       if (prev.spidersEnabled !== state.spidersEnabled) { removeSpider(); scheduleSpider(true); }
       if (prev.personality !== state.personality) speak('personalityChange');
       if (prev.focusStatus !== state.focusStatus) focusHidden = false;
@@ -862,7 +881,7 @@
     zipTo(e.clientX, e.clientY).then((ok) => ok && Math.random() < 0.3 && speak('interact'));
   }, { passive: true });
 
-  // Resize: keep Webling and his anchor on screen.
+  // Resize: keep Spider-Buddy and his anchor on screen.
   let resizeTimer = 0;
   listen(window, 'resize', () => {
     cancel(resizeTimer);
@@ -877,6 +896,7 @@
     if (!document.hidden && active) {
       if (!mishapTimer || !timers.has(mishapTimer)) scheduleMishap();
       if (!wanderTimer || !timers.has(wanderTimer)) scheduleWander();
+      if (!nudgeTimer || !timers.has(nudgeTimer)) scheduleNudge();
       if (!activeSpider && (!spiderTimer || !timers.has(spiderTimer))) scheduleSpider();
       renderWater();
       renderFocus();
@@ -932,7 +952,7 @@
   // ---------------------------------------------------------------------------
 
   async function summon() {
-    // Background already woke Webling in storage; make sure we're visible now.
+    // Background already woke Spider-Buddy in storage; make sure we're visible now.
     state = { ...state, enabled: true, snoozeUntil: 0 };
     applyState(null);
     if (!active) return;
@@ -1005,7 +1025,7 @@
     const prev = state;
     const merged = { ...state };
     for (const [k, c] of Object.entries(changes)) {
-      if (k === 'lastPosition') continue; // don't teleport this tab when another tab moves Webling
+      if (k === 'lastPosition') continue; // don't teleport this tab when another tab moves Spider-Buddy
       merged[k] = c.newValue;
     }
     state = Schema.sanitize(merged);
