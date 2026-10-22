@@ -8,6 +8,16 @@
  * Tabs and the popup stay in sync by listening to chrome.storage.onChanged;
  * messages to tabs are only used for one-off *events* (speech, celebrations).
  */
+/**
+ * Spider-Buddy — background service worker (Manifest V3).
+ *
+ * Owns all writes to chrome.storage.local. Every mutation goes through
+ * `update()`, which serialises read-modify-write cycles so rapid clicks
+ * (water +1, rescues…) can never overwrite each other.
+ *
+ * Tabs and the popup stay in sync by listening to chrome.storage.onChanged;
+ * messages to tabs are only used for one-off *events* (speech, celebrations).
+ */
 
 import './shared/schema.js';
 import './shared/progression.js';
