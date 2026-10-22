@@ -139,6 +139,7 @@
   const webSplat = $('.web-splat');
   const buddy = $('.buddy');
   const motion = $('.motion');
+  const flip = $('.flip');
   const frames = $('.frames');
   const grip = $('.grip');
   const bubble = $('.bubble');
@@ -181,6 +182,98 @@
   let activeSpider = null;
   let dimStyle = null;
 
+  // ---------------------------------------------------------------------------
+  // Sound effects — synthesised with the Web Audio API (no files, CSP-safe).
+  // Gated by state.soundEnabled; the context is created/resumed on a user gesture.
+  // ---------------------------------------------------------------------------
+
+  const Sound = (() => {
+    let ctx = null;
+    let master = null;
+
+    function ensure() {
+      if (!state.soundEnabled) return null;
+      try {
+        if (!ctx) {
+          const AC = window.AudioContext || window['webkitAudioContext'];
+          if (!AC) return null;
+          ctx = new AC();
+          master = ctx.createGain();
+          master.gain.value = 0.5;
+          master.connect(ctx.destination);
+        }
+        if (ctx.state === 'suspended') ctx.resume();
+        return ctx;
+      } catch {
+        return null;
+      }
+    }
+
+    function tone({ type = 'sine', from = 440, to = null, dur = 0.12, gain = 0.05, delay = 0 }) {
+      const ac = ensure();
+      if (!ac) return;
+      const t0 = ac.currentTime + delay;
+      const osc = ac.createOscillator();
+      const g = ac.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(from, t0);
+      if (to) osc.frequency.exponentialRampToValueAtTime(Math.max(1, to), t0 + dur);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(gain, t0 + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      osc.connect(g).connect(master);
+      osc.start(t0);
+      osc.stop(t0 + dur + 0.03);
+    }
+
+    function noise({ dur = 0.3, gain = 0.05, from = 1200, to = 200, delay = 0, type = 'bandpass' }) {
+      const ac = ensure();
+      if (!ac) return;
+      const t0 = ac.currentTime + delay;
+      const n = Math.max(1, Math.floor(ac.sampleRate * dur));
+      const buf = ac.createBuffer(1, n, ac.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < n; i++) data[i] = Math.random() * 2 - 1;
+      const src = ac.createBufferSource();
+      src.buffer = buf;
+      const filt = ac.createBiquadFilter();
+      filt.type = type;
+      filt.frequency.setValueAtTime(from, t0);
+      filt.frequency.exponentialRampToValueAtTime(Math.max(40, to), t0 + dur);
+      filt.Q.value = 0.8;
+      const g = ac.createGain();
+      g.gain.setValueAtTime(gain, t0);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      src.connect(filt).connect(g).connect(master);
+      src.start(t0);
+      src.stop(t0 + dur);
+    }
+
+    const fx = {
+      thwip: () => tone({ type: 'square', from: 1150, to: 280, dur: 0.12, gain: 0.04 }),
+      land: () => { tone({ type: 'sine', from: 210, to: 70, dur: 0.14, gain: 0.07 }); noise({ dur: 0.09, gain: 0.03, from: 500, to: 120 }); },
+      jet: () => noise({ dur: 0.5, gain: 0.05, from: 280, to: 1700 }),
+      step: () => tone({ type: 'triangle', from: 340, to: 170, dur: 0.05, gain: 0.03 }),
+      climb: () => tone({ type: 'triangle', from: 520, to: 360, dur: 0.06, gain: 0.025 }),
+      cheer: () => [523, 659, 784, 1047].forEach((f, i) => tone({ type: 'square', from: f, dur: 0.12, gain: 0.04, delay: i * 0.085 })),
+      rescue: () => { tone({ type: 'sine', from: 784, dur: 0.1, gain: 0.05 }); tone({ type: 'sine', from: 1047, dur: 0.13, gain: 0.05, delay: 0.1 }); },
+      water: () => tone({ type: 'sine', from: 920, to: 430, dur: 0.14, gain: 0.045 }),
+      slip: () => tone({ type: 'sawtooth', from: 620, to: 130, dur: 0.3, gain: 0.04 }),
+    };
+
+    return {
+      ensure,
+      play(name) { try { if (state.soundEnabled && fx[name]) fx[name](); } catch { /* ignore */ } },
+    };
+  })();
+
+  /** Plays `name` on a loop every `ms` while a motion runs; returns a stop fn. */
+  function soundLoop(name, ms) {
+    if (!state.soundEnabled) return () => {};
+    let t = later(function tick() { Sound.play(name); t = later(tick, ms); }, ms * 0.5);
+    return () => cancel(t);
+  }
+
   const reduceMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
   const reducedMotion = () => state.reducedMotion || reduceMotionQuery.matches;
   const look = () => Progression.resolveEquipped(state.equippedCosmetics, state.cosmeticsUnlocked);
@@ -200,6 +293,7 @@
     if (key === renderedLook) return;
     renderedLook = key;
     buddy.classList.toggle('pixel', isPixel());
+    buddy.classList.toggle('bolt', isArticulated());
     frames.innerHTML = Sprite.FRAMES
       .map((f) => Sprite.frameSvg(f, l.theme, { uid: `pg-${f}`, acc: l.badge, className: `frame frame-${f}` }))
       .join('');
@@ -221,6 +315,12 @@
   function isPixel() {
     const p = Sprite.PALETTES[look().theme];
     return !!(p && p.sprites);
+  }
+
+  /** True for the jointed hero ("Boltling"), whose limbs the CSS animates per pose. */
+  function isArticulated() {
+    const p = Sprite.PALETTES[look().theme];
+    return !!(p && p.articulated);
   }
 
   /** Comic "THWIP!" popping off the side the strand is fired towards (pixel themes). */
@@ -347,8 +447,9 @@
       try { anim.cancel(); } catch { /* ignore */ }
       anim = null;
     }
-    buddy.classList.remove('flying');
+    buddy.classList.remove('flying', 'climbing', 'climb-left', 'climb-right', 'walking', 'running', 'skimming', 'boosting');
     threadShoot = 1;
+    threadVisible = true; // crawling/walking/running turn the strand off; any new motion restores it
   }
 
   function landingEffect() {
@@ -376,6 +477,7 @@
   async function shootStrand(nextAnchor, id) {
     anchor = nextAnchor;
     thwip(nextAnchor.x >= pos.x + charW() / 2);
+    Sound.play('thwip');
     thread.classList.add('shooting');
     splatOn = false;
     threadShoot = 0;
@@ -416,6 +518,7 @@
 
     setPose('land');
     landingEffect();
+    Sound.play('land');
     await wait(isPixel() ? 480 : 240); // pixel themes play a bounce on the thread
     if (id !== busy) return false;
     setPose('idle');
@@ -510,10 +613,353 @@
     return swingTo(ax, Math.random() * 12, ax - charW() / 2, ty);
   }
 
+  // ---------------------------------------------------------------------------
+  // Wall-crawl & ground-walk (no web line — he clings to the surface instead)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Clings sideways to the given edge ('left' | 'right') and scuttles up it in
+   * surges (reach, pull, reach) instead of gliding. No web line while climbing.
+   */
+  async function crawlUp(side) {
+    stopMotion();
+    const id = busy;
+    bubble.classList.remove('show');
+    const margin = 2;
+    const x = side === 'left' ? margin : Math.max(0, vw() - charW() - margin);
+    const topY = 46 + Math.random() * 44;
+    const dist = Math.max(90, pos.y - topY);
+    const startY = pos.y;
+    place(x, startY);
+    buddy.classList.remove('facing-left');
+    buddy.classList.add('climbing', side === 'left' ? 'climb-left' : 'climb-right');
+    threadVisible = false;
+    setPose('crawl');
+    drawThread();
+
+    let stopClimb = () => {};
+    const finish = (ny) => {
+      stopClimb();
+      place(x, ny);
+      buddy.classList.remove('climbing', 'climb-left', 'climb-right');
+      setPose('idle');
+      threadVisible = true;
+      anchorAbove();
+      drawThread();
+    };
+
+    if (reducedMotion()) {
+      finish(startY - dist);
+      return true;
+    }
+
+    // Pull up in a handful of grabbing surges — each segment eases out like a lunge.
+    const hops = Math.max(3, Math.round(dist / 38));
+    const kf = [];
+    for (let i = 0; i <= hops; i++) {
+      kf.push({
+        transform: `translateY(${(-dist * i / hops).toFixed(1)}px)`,
+        offset: i / hops,
+        easing: 'cubic-bezier(.3,.7,.2,1)',
+      });
+    }
+    stopClimb = soundLoop('climb', Math.max(140, (dist * 7.5) / hops));
+    try {
+      anim = motion.animate(kf, { duration: Math.max(900, dist * 7.5), fill: 'forwards' });
+      await anim.finished;
+    } catch {
+      stopClimb();
+      return false;
+    }
+    if (id !== busy) { stopClimb(); return false; }
+    anim.cancel();
+    anim = null;
+    finish(startY - dist);
+    return true;
+  }
+
+  /** Walks along the bottom of the page to a random spot on the "floor". */
+  async function walkAlong() {
+    stopMotion();
+    const id = busy;
+    bubble.classList.remove('show');
+    const floorY = Math.max(0, vh() - charH() - 6);
+    const fromRight = pos.x + charW() / 2 > vw() / 2;
+    const span = Math.max(80, vw() - charW() - 40);
+    const tx = clampPos(fromRight ? 20 + Math.random() * span * 0.4 : 20 + span * 0.55 + Math.random() * span * 0.4, floorY).x;
+    place(pos.x, floorY);
+    const dx = tx - pos.x;
+    face(dx);
+    buddy.classList.add('walking');
+    threadVisible = false;
+    setPose('walk');
+    drawThread();
+
+    if (reducedMotion()) {
+      place(tx, floorY);
+      buddy.classList.remove('walking');
+      threadVisible = true;
+      setPose('idle');
+      anchorAbove();
+      drawThread();
+      return true;
+    }
+
+    try {
+      anim = motion.animate(
+        [{ transform: 'translateX(0)' }, { transform: `translateX(${dx}px)` }],
+        { duration: Math.max(1000, Math.abs(dx) * 6), easing: 'linear', fill: 'forwards' },
+      );
+      await anim.finished;
+    } catch {
+      return false;
+    }
+    if (id !== busy) return false;
+    anim.cancel();
+    anim = null;
+    place(tx, floorY);
+    buddy.classList.remove('walking');
+    setPose('idle');
+    threadVisible = true;
+    anchorAbove();
+    drawThread();
+    return true;
+  }
+
+  /** Swings down to a side, then crawls up it. */
+  async function roamCrawl() {
+    const side = pos.x + charW() / 2 < vw() / 2 ? 'left' : 'right';
+    const x = side === 'left' ? 30 : Math.max(0, vw() - charW() - 30);
+    const landY = Math.max(80, vh() - charH() - (40 + Math.random() * 70));
+    const ok = await swingTo(x + charW() / 2, Math.max(0, landY - 170), x, landY);
+    if (!ok) return false;
+    await wait(170);
+    return crawlUp(side);
+  }
+
+  /** Swings down to the floor, then walks along it. */
+  async function roamWalk() {
+    const floorY = Math.max(0, vh() - charH() - 6);
+    const sx = 40 + Math.random() * Math.max(1, vw() - charW() - 80);
+    const ok = await swingTo(sx + charW() / 2, Math.max(0, floorY - 180), sx, floorY);
+    if (!ok) return false;
+    await wait(150);
+    return walkAlong();
+  }
+
+  /** Dashes along the bottom of the page — same floor as the walk, much faster. */
+  async function runAlong() {
+    stopMotion();
+    const id = busy;
+    bubble.classList.remove('show');
+    const floorY = Math.max(0, vh() - charH() - 6);
+    const fromRight = pos.x + charW() / 2 > vw() / 2;
+    const span = Math.max(80, vw() - charW() - 40);
+    const tx = clampPos(fromRight ? 20 + Math.random() * span * 0.45 : 20 + span * 0.5 + Math.random() * span * 0.45, floorY).x;
+    place(pos.x, floorY);
+    const dx = tx - pos.x;
+    face(dx);
+    buddy.classList.add('running');
+    threadVisible = false;
+    setPose('run');
+    drawThread();
+
+    let dust = null;
+    let stopSteps = () => {};
+    const finish = () => {
+      stopSteps();
+      if (dust) { dust.remove(); dust = null; }
+      place(tx, floorY);
+      buddy.classList.remove('running');
+      setPose('idle');
+      threadVisible = true;
+      anchorAbove();
+      drawThread();
+    };
+
+    if (reducedMotion()) {
+      finish();
+      return true;
+    }
+
+    // Puffs of dust kicked up at his heels sell the ground speed.
+    dust = document.createElement('span');
+    dust.className = 'run-dust';
+    dust.innerHTML = '<i></i><i></i><i></i>';
+    flip.appendChild(dust);
+    stopSteps = soundLoop('step', 150);
+
+    try {
+      anim = motion.animate(
+        [{ transform: 'translateX(0)' }, { transform: `translateX(${dx}px)` }],
+        { duration: Math.max(480, Math.abs(dx) * 2.4), easing: 'cubic-bezier(.25,.6,.3,1)', fill: 'forwards' },
+      );
+      await anim.finished;
+    } catch {
+      stopSteps();
+      if (dust) { dust.remove(); dust = null; }
+      return false;
+    }
+    if (id !== busy) { stopSteps(); if (dust) { dust.remove(); dust = null; } return false; }
+    anim.cancel();
+    anim = null;
+    finish();
+    return true;
+  }
+
+  /** Thruster-skims low along the bottom of the page (jet-dash on the "floor"). */
+  async function jetSkim() {
+    stopMotion();
+    const id = busy;
+    bubble.classList.remove('show');
+    const floorY = Math.max(0, vh() - charH() - 6);
+    const fromRight = pos.x + charW() / 2 > vw() / 2;
+    const span = Math.max(80, vw() - charW() - 40);
+    const tx = clampPos(fromRight ? 20 + Math.random() * span * 0.5 : 20 + span * 0.45 + Math.random() * span * 0.5, floorY).x;
+    place(pos.x, floorY);
+    const dx = tx - pos.x;
+    face(dx);
+    buddy.classList.add('skimming');
+    threadVisible = false;
+    setPose('flight');
+    drawThread();
+
+    if (reducedMotion()) {
+      place(tx, floorY);
+      buddy.classList.remove('skimming');
+      threadVisible = true;
+      setPose('idle');
+      anchorAbove();
+      drawThread();
+      return true;
+    }
+
+    const jet = document.createElement('span');
+    jet.className = 'boost-jet skim-jet';
+    buddy.appendChild(jet);
+    Sound.play('jet');
+
+    try {
+      anim = motion.animate([
+        { transform: 'translate(0,0) rotate(0deg)' },
+        { transform: `translate(${dx * 0.5}px, -10px) rotate(0deg)`, offset: 0.5 },
+        { transform: `translate(${dx}px, 0) rotate(0deg)` },
+      ], { duration: Math.max(440, Math.abs(dx) * 2), easing: 'cubic-bezier(.3,.5,.2,1)', fill: 'forwards' });
+      await anim.finished;
+    } catch {
+      jet.remove();
+      return false;
+    }
+    jet.remove();
+    if (id !== busy) return false;
+    anim.cancel();
+    anim = null;
+    place(tx, floorY);
+    buddy.classList.remove('skimming');
+    setPose('land');
+    await wait(160);
+    if (id !== busy) return false;
+    setPose('idle');
+    threadVisible = true;
+    anchorAbove();
+    drawThread();
+    return true;
+  }
+
+  /** Swings down to the floor, then runs along it. */
+  async function roamRun() {
+    const floorY = Math.max(0, vh() - charH() - 6);
+    const sx = 40 + Math.random() * Math.max(1, vw() - charW() - 80);
+    const ok = await swingTo(sx + charW() / 2, Math.max(0, floorY - 170), sx, floorY);
+    if (!ok) return false;
+    await wait(120);
+    return runAlong();
+  }
+
+  /** Swings down to the floor, then jet-skims along it. */
+  async function roamSkim() {
+    const floorY = Math.max(0, vh() - charH() - 6);
+    const sx = 40 + Math.random() * Math.max(1, vw() - charW() - 80);
+    const ok = await swingTo(sx + charW() / 2, Math.max(0, floorY - 170), sx, floorY);
+    if (!ok) return false;
+    await wait(120);
+    return jetSkim();
+  }
+
+  /** Thruster glide: lights a jet and flies straight to a point, no web line. */
+  async function boostTo(tx, ty) {
+    stopMotion();
+    const id = busy;
+    bubble.classList.remove('show');
+    const target = clampPos(tx, Math.max(40, ty));
+    const dx = target.x - pos.x;
+    const dy = target.y - pos.y;
+    face(dx);
+    threadVisible = false;
+    setPose('flight');
+    buddy.classList.add('boosting');
+    drawThread();
+
+    if (reducedMotion()) {
+      place(target.x, target.y);
+      buddy.classList.remove('boosting');
+      threadVisible = true;
+      setPose('idle');
+      anchorAbove();
+      drawThread();
+      return true;
+    }
+
+    // Exhaust flame under the feet while the thrusters are lit.
+    const jet = document.createElement('span');
+    jet.className = 'boost-jet';
+    buddy.appendChild(jet);
+    Sound.play('jet');
+
+    const dist = Math.hypot(dx, dy) || 1;
+    const tilt = Math.max(-18, Math.min(18, dx * 0.05));
+    const duration = Math.max(520, Math.min(1100, 300 + dist * 0.8));
+    try {
+      anim = motion.animate([
+        { transform: 'translate(0,0) rotate(0deg)' },
+        { transform: `translate(${dx * 0.5}px, ${dy * 0.5 - 16}px) rotate(${tilt}deg)`, offset: 0.5 },
+        { transform: `translate(${dx}px, ${dy}px) rotate(0deg)` },
+      ], { duration, easing: 'cubic-bezier(.4,.2,.2,1)', fill: 'forwards' });
+      await anim.finished;
+    } catch {
+      jet.remove();
+      return false;
+    }
+    jet.remove();
+    if (id !== busy) return false;
+    anim.cancel();
+    anim = null;
+    place(target.x, target.y);
+    buddy.classList.remove('boosting');
+    setPose('land');
+    landingEffect();
+    await wait(200);
+    if (id !== busy) return false;
+    setPose('idle');
+    threadVisible = true;
+    anchorAbove();
+    drawThread();
+    return true;
+  }
+
+  /** Picks a spot and thruster-glides there. */
+  async function roamBoost() {
+    const margin = 40;
+    const tx = margin + Math.random() * Math.max(1, vw() - charW() - margin * 2);
+    const ty = 60 + Math.random() * Math.max(0, vh() * 0.45 - 60);
+    return boostTo(tx, ty);
+  }
+
   async function celebrate() {
     if (!active) return;
     const id = ++busy;
     setPose('celebrate');
+    Sound.play('cheer');
     if (!reducedMotion()) {
       try {
         anim = motion.animate(
@@ -545,13 +991,28 @@
   async function runWander() {
     const blocked = !active || document.hidden || anim || dragState || reducedMotion() || state.focusStatus === 'running';
     if (blocked) return scheduleWander();
-    const margin = 24;
-    const tx = margin + Math.random() * Math.max(0, vw() - charW() - margin * 2);
-    const ty = 70 + Math.random() * Math.max(0, vh() * 0.55 - 70);
-    // Anchor somewhere above the target, leaning towards the direction of travel.
-    const lean = (tx - pos.x) * 0.25;
-    const ax = tx + charW() / 2 + lean;
-    const ok = await swingTo(ax, Math.random() * 20, tx, ty);
+    // Mix in a wall-crawl or a ground-walk now and then; otherwise swing.
+    const style = Math.random();
+    let ok;
+    if (style < 0.18) {
+      ok = await roamCrawl();
+    } else if (style < 0.42) {
+      ok = await roamRun();     // spider dash along the bottom
+    } else if (style < 0.62) {
+      ok = await roamSkim();    // jet-skim along the bottom
+    } else if (style < 0.72) {
+      ok = await roamWalk();
+    } else if (style < 0.82) {
+      ok = await roamBoost();
+    } else {
+      const margin = 24;
+      const tx = margin + Math.random() * Math.max(0, vw() - charW() - margin * 2);
+      const ty = 70 + Math.random() * Math.max(0, vh() * 0.55 - 70);
+      // Anchor somewhere above the target, leaning towards the direction of travel.
+      const lean = (tx - pos.x) * 0.25;
+      const ax = tx + charW() / 2 + lean;
+      ok = await swingTo(ax, Math.random() * 20, tx, ty);
+    }
     if (ok && Math.random() < 0.15) speak('interact');
     scheduleWander();
   }
@@ -589,6 +1050,7 @@
     if (blocked) return scheduleMishap();
     const id = ++busy;
     speak('slip', null, 1400);
+    Sound.play('slip');
     setPose('slip');
     threadVisible = false;
     drawThread();
@@ -654,6 +1116,7 @@
       if (rescued) return;
       rescued = true;
       el.classList.add('rescued');
+      Sound.play('rescue');
       send({ type: 'RECORD_RESCUE' }).then((resp) => {
         if (resp && resp.success) speak('spiderRescue', { score: resp.spiderScore });
       });
@@ -773,6 +1236,7 @@
 
   listen(buddy, 'pointerdown', (e) => {
     if (e.button !== 0) return;
+    Sound.ensure(); // first gesture unlocks the audio context for later timer-driven sounds
     if (anim) {
       const r = motion.getBoundingClientRect();
       stopMotion();
@@ -848,6 +1312,7 @@
   listen($('.water-add'), 'click', async () => {
     const resp = await send({ type: 'HYDRATION_ADD' });
     if (!resp || !resp.success) return;
+    Sound.play('water');
     if (resp.reachedGoal) {
       speak('hydrationComplete');
       celebrate();
@@ -860,6 +1325,7 @@
   // Swing-to-click: ignore anything interactive or editable.
   const INTERACTIVE = 'a,button,input,select,textarea,label,summary,details,video,audio,iframe,[role=button],[role=link],[role=menuitem],[role=tab],[contenteditable=""],[contenteditable=true]';
   listen(document, 'click', (e) => {
+    Sound.ensure(); // any page click also unlocks audio
     if (!active || !state.swingToClicks || e.defaultPrevented || e.button !== 0) return;
     const path = e.composedPath();
     if (path.includes(host)) return;
@@ -1160,6 +1626,18 @@
       .buddy[data-pose="land"] .frame-land,
       .buddy[data-pose="slip"] .frame-slip,
       .buddy[data-pose="celebrate"] .frame-celebrate { display: block; }
+      /* Crawl, walk & run reuse the crouched, action-ready frame. */
+      .buddy[data-pose="crawl"] .frame-anticipate,
+      .buddy[data-pose="walk"] .frame-anticipate,
+      .buddy[data-pose="run"] .frame-anticipate { display: block; }
+      .buddy.climbing .sway, .buddy.walking .sway,
+      .buddy.running .sway, .buddy.boosting .sway, .buddy.skimming .sway { animation: none; }
+      .buddy.boosting[data-pose="flight"] .frame-flight,
+      .buddy.skimming[data-pose="flight"] .frame-flight { animation: none; }
+      /* Wall-crawl: turn the whole body sideways so he clings to the edge, head up. */
+      .buddy.climbing .sway { transform-origin: 50% 50%; }
+      .buddy.climb-right .sway { transform: rotate(-90deg); }
+      .buddy.climb-left .sway { transform: rotate(90deg); }
       .grip { position: absolute; left: 50%; top: ${(GRIP * 100).toFixed(2)}%; width: 2px; height: 2px; margin: -1px; }
 
       /* Pixel-art themes: per-pose animation (frames restart when they become visible) */
@@ -1173,6 +1651,12 @@
       .buddy.pixel[data-pose="land"] .frame-land { animation: px-land .48s cubic-bezier(.3, 1.5, .5, 1) both; }
       .buddy.pixel[data-pose="slip"] .frame-slip { transform-origin: 50% 55%; animation: px-tumble .45s linear infinite; }
       .buddy.pixel[data-pose="celebrate"] .frame-celebrate { animation: px-cheer .22s steps(2, jump-none) infinite alternate; }
+      .buddy.pixel[data-pose="crawl"] .frame-anticipate { transform-origin: 50% 50%; animation: px-climb .34s ease-in-out infinite; }
+      .buddy.pixel[data-pose="walk"] .frame-anticipate { animation: px-walk .3s ease-in-out infinite alternate; }
+      .buddy.pixel[data-pose="run"] .frame-anticipate {
+        transform-origin: 50% 92%; animation: px-run .19s ease-in-out infinite;
+        filter: drop-shadow(-9px 0 0 rgba(214, 32, 47, .26)) drop-shadow(-16px 0 0 rgba(31, 79, 184, .14));
+      }
       .buddy.pixel .sway { animation-duration: 2.2s; }
       .stage.reduced .buddy.pixel .frame { animation: none !important; filter: none; }
 
@@ -1185,6 +1669,33 @@
       }
       .thwip.to-right { left: 62%; --r: -10deg; }
       .thwip.to-left { right: 62%; --r: 10deg; }
+
+      /* Thruster exhaust while boosting */
+      .boost-jet {
+        position: absolute; left: 50%; bottom: 1%;
+        width: 16px; height: 32px; margin-left: -8px;
+        background: radial-gradient(ellipse at 50% 18%, #fff 0%, #ffe07a 26%, #ff8a3c 54%, rgba(255,70,40,0) 86%);
+        border-radius: 50% 50% 46% 46% / 28% 28% 72% 72%;
+        transform-origin: 50% 0; opacity: .92; pointer-events: none; z-index: 1;
+        filter: drop-shadow(0 0 6px rgba(255,150,60,.7));
+        animation: jet .12s steps(2) infinite;
+      }
+      @keyframes jet {
+        from { transform: scaleY(1) scaleX(1); opacity: .92; }
+        to { transform: scaleY(1.35) scaleX(.78); opacity: .62; }
+      }
+      /* Low, wide exhaust for the floor-skim dash */
+      .boost-jet.skim-jet {
+        left: 50%; bottom: 8%; width: 34px; height: 15px; margin-left: -24px;
+        background: radial-gradient(ellipse at 80% 50%, #fff 0%, #ffe07a 26%, #ff8a3c 55%, rgba(255,70,40,0) 88%);
+        border-radius: 46% 50% 50% 46% / 50% 60% 40% 50%;
+        animation: skim-jet .1s steps(2) infinite;
+      }
+      @keyframes skim-jet {
+        from { transform: scaleX(1) scaleY(1); opacity: .9; }
+        to { transform: scaleX(1.3) scaleY(.75); opacity: .6; }
+      }
+      .stage.reduced .boost-jet { animation: none; }
 
       /* Landing particles */
       .fx { position: absolute; left: 50%; top: 70%; width: 0; height: 0; }
@@ -1315,6 +1826,78 @@
         100% { transform: none; }
       }
       @keyframes px-tumble { to { transform: rotate(360deg); } }
+      @keyframes px-climb {
+        0% { transform: rotate(-5deg) scale(1, 1); }
+        50% { transform: rotate(5deg) scale(1.03, .97); }
+        100% { transform: rotate(-5deg) scale(1, 1); }
+      }
+      @keyframes px-walk { from { transform: translateY(0) scaleY(1); } to { transform: translateY(-1.5px) scaleY(.97); } }
+      @keyframes px-run {
+        0%   { transform: rotate(18deg) translateY(1px) scaleY(.95); }
+        30%  { transform: rotate(11deg) translateY(-6px) scaleY(1.04); }
+        50%  { transform: rotate(15deg) translateY(-2px) scaleY(1); }
+        80%  { transform: rotate(11deg) translateY(-6px) scaleY(1.04); }
+        100% { transform: rotate(18deg) translateY(1px) scaleY(.95); }
+      }
+      .run-dust { position: absolute; left: 46%; bottom: 5%; width: 0; height: 0; pointer-events: none; z-index: 0; }
+      .run-dust i {
+        position: absolute; bottom: 0; left: 0; width: 10px; height: 10px; border-radius: 50%;
+        background: radial-gradient(circle, rgba(226,226,236,.8), rgba(205,205,215,0) 70%);
+        animation: puff .42s linear infinite;
+      }
+      .run-dust i:nth-child(2) { animation-delay: .14s; }
+      .run-dust i:nth-child(3) { animation-delay: .28s; }
+      @keyframes puff {
+        from { transform: translate(0, 0) scale(.5); opacity: .85; }
+        to { transform: translate(-24px, -7px) scale(1.5); opacity: 0; }
+      }
+      .stage.reduced .run-dust { display: none; }
+
+      /* --- Boltling: jointed original hero, limbs animated per pose --- */
+      .buddy.bolt .bolt-arm, .buddy.bolt .bolt-leg, .buddy.bolt .bolt-jet { transform-box: fill-box; transform-origin: 50% 0; }
+      .buddy.bolt .bolt-head { transform-box: fill-box; transform-origin: 50% 100%; }
+      .buddy.bolt .bolt-jet { opacity: 0; }
+
+      .buddy.bolt[data-pose="idle"] .bolt-arm-l, .buddy.bolt[data-pose="idle"] .bolt-leg-r { animation: bolt-dangle-a 3s ease-in-out infinite; }
+      .buddy.bolt[data-pose="idle"] .bolt-arm-r, .buddy.bolt[data-pose="idle"] .bolt-leg-l { animation: bolt-dangle-b 3s ease-in-out infinite; }
+
+      .buddy.bolt[data-pose="run"] .frame-anticipate { animation: bolt-run-bob .3s ease-in-out infinite; }
+      .buddy.bolt[data-pose="run"] .bolt-leg-l { animation: bolt-stride .3s ease-in-out infinite; }
+      .buddy.bolt[data-pose="run"] .bolt-leg-r { animation: bolt-stride .3s ease-in-out infinite; animation-delay: -.15s; }
+      .buddy.bolt[data-pose="run"] .bolt-arm-l { animation: bolt-pump .3s ease-in-out infinite; animation-delay: -.15s; }
+      .buddy.bolt[data-pose="run"] .bolt-arm-r { animation: bolt-pump .3s ease-in-out infinite; }
+
+      .buddy.bolt[data-pose="walk"] .bolt-leg-l, .buddy.bolt[data-pose="walk"] .bolt-arm-r { animation: bolt-step .52s ease-in-out infinite; }
+      .buddy.bolt[data-pose="walk"] .bolt-leg-r, .buddy.bolt[data-pose="walk"] .bolt-arm-l { animation: bolt-step .52s ease-in-out infinite; animation-delay: -.26s; }
+
+      .buddy.bolt[data-pose="crawl"] .bolt-leg-l, .buddy.bolt[data-pose="crawl"] .bolt-arm-r { animation: bolt-reach .44s ease-in-out infinite; }
+      .buddy.bolt[data-pose="crawl"] .bolt-leg-r, .buddy.bolt[data-pose="crawl"] .bolt-arm-l { animation: bolt-reach .44s ease-in-out infinite; animation-delay: -.22s; }
+
+      .buddy.bolt[data-pose="flight"] .bolt-leg-l, .buddy.bolt[data-pose="flight"] .bolt-leg-r { transform: rotate(38deg); }
+      .buddy.bolt[data-pose="flight"] .bolt-arm-l, .buddy.bolt[data-pose="flight"] .bolt-arm-r { transform: rotate(-26deg); }
+      .buddy.bolt.boosting .bolt-jet, .buddy.bolt.skimming .bolt-jet { opacity: 1; animation: bolt-flame .09s steps(2) infinite; }
+
+      .buddy.bolt[data-pose="land"] .bolt-leg-l { transform: rotate(13deg); }
+      .buddy.bolt[data-pose="land"] .bolt-leg-r { transform: rotate(-13deg); }
+
+      .buddy.bolt[data-pose="celebrate"] .bolt-arm-l { animation: bolt-cheer-l .26s ease-in-out infinite alternate; }
+      .buddy.bolt[data-pose="celebrate"] .bolt-arm-r { animation: bolt-cheer-r .26s ease-in-out infinite alternate; }
+
+      .stage.reduced .buddy.bolt .bolt-arm,
+      .stage.reduced .buddy.bolt .bolt-leg,
+      .stage.reduced .buddy.bolt .bolt-jet,
+      .stage.reduced .buddy.bolt .frame-anticipate { animation: none !important; }
+
+      @keyframes bolt-stride { 0% { transform: rotate(32deg); } 50% { transform: rotate(-32deg); } 100% { transform: rotate(32deg); } }
+      @keyframes bolt-pump { 0% { transform: rotate(-26deg); } 50% { transform: rotate(26deg); } 100% { transform: rotate(-26deg); } }
+      @keyframes bolt-step { 0% { transform: rotate(16deg); } 50% { transform: rotate(-16deg); } 100% { transform: rotate(16deg); } }
+      @keyframes bolt-reach { 0% { transform: rotate(26deg); } 50% { transform: rotate(-20deg); } 100% { transform: rotate(26deg); } }
+      @keyframes bolt-run-bob { 0% { transform: rotate(7deg) translateY(1px); } 25% { transform: rotate(7deg) translateY(-4px); } 50% { transform: rotate(7deg) translateY(1px); } 75% { transform: rotate(7deg) translateY(-4px); } 100% { transform: rotate(7deg) translateY(1px); } }
+      @keyframes bolt-dangle-a { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+      @keyframes bolt-dangle-b { 0%, 100% { transform: rotate(4deg); } 50% { transform: rotate(-4deg); } }
+      @keyframes bolt-flame { from { transform: scaleY(1); } to { transform: scaleY(1.45); } }
+      @keyframes bolt-cheer-l { from { transform: rotate(-150deg); } to { transform: rotate(-118deg); } }
+      @keyframes bolt-cheer-r { from { transform: rotate(150deg); } to { transform: rotate(118deg); } }
       @keyframes px-cheer { from { transform: rotate(-5deg) translateY(0); } to { transform: rotate(5deg) translateY(-3px); } }
       @keyframes thwip {
         0% { transform: rotate(var(--r)) scale(.3); opacity: 0; }

@@ -51,6 +51,15 @@
         celebrate: ['cheer', 0.47],
       },
     },
+    // `articulated` replaces the drawn blob with a jointed original hero ("Boltling").
+    // Its limbs are separate <g> groups the content script animates per pose (run, climb, boost…).
+    // An original design — steel-blue armour, amber trim, a cyan visor and jet boots.
+    bolt: {
+      articulated: true,
+      steel: '#44588a', steelLight: '#6f88bf', steelShade: '#2b3a63', outline: '#101a2e',
+      amber: '#ffb63d', amberShade: '#d98a24', visor: '#78e8ff', visorDark: '#0c3a4b',
+      metal: '#9aa7c4', core: '#ffe08a',
+    },
   });
 
   /** Y coordinate (in the 125-high viewBox) where Webling grips the thread. */
@@ -220,6 +229,7 @@
    */
   function frameMarkup(name, p, uid, acc = '') {
     if (p.sprites) return spriteMarkup(name, p);
+    if (p.articulated) return boltMarkup(p, uid);
     let s = defs(p, uid);
     switch (name) {
       case 'anticipate': {
@@ -282,6 +292,77 @@
       s += `<circle cx="50" cy="${GRIP_Y}" r="5.2" fill="${p.outline}"/><circle cx="50" cy="${GRIP_Y}" r="3.6" fill="${p.sock}"/>`;
     }
     return s;
+  }
+
+  /**
+   * Original jointed hero ("Boltling"). Pose-agnostic: returns one upright figure
+   * with each limb in its own <g> so the content script animates the run/climb/boost
+   * cycles in CSS. The thread attaches to the hook on his helmet at (50, GRIP_Y).
+   */
+  function boltMarkup(p, uid) {
+    const O = p.outline;
+    // Underlaid outline + coloured stroke, the look used for the vector character's legs.
+    const limb = (d, col, w) =>
+      `<path d="${d}" fill="none" stroke="${O}" stroke-width="${w + 3}" stroke-linecap="round" stroke-linejoin="round"/>` +
+      `<path d="${d}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
+    const boot = (x, y) =>
+      `<ellipse cx="${x}" cy="${y}" rx="5.4" ry="4.2" fill="${O}"/>` +
+      `<ellipse cx="${x}" cy="${y - 0.4}" rx="4" ry="3" fill="${p.amber}"/>`;
+    const hand = (x, y) =>
+      `<circle cx="${x}" cy="${y}" r="4.3" fill="${O}"/><circle cx="${x}" cy="${y}" r="3" fill="${p.metal}"/>`;
+    const flame = (x, y) =>
+      `<path d="M${x - 4} ${y} Q${x} ${y + 3} ${x} ${y + 15} Q${x} ${y + 3} ${x + 4} ${y} Q${x} ${y + 6} ${x - 4} ${y} z" fill="${p.amber}"/>` +
+      `<path d="M${x - 2.2} ${y + 1} Q${x} ${y + 4} ${x} ${y + 9} Q${x} ${y + 4} ${x + 2.2} ${y + 1} Q${x} ${y + 5} ${x - 2.2} ${y + 1} z" fill="#fff6d0"/>`;
+
+    return `<defs>
+        <radialGradient id="wb-torso-${uid}" cx="40%" cy="28%" r="80%">
+          <stop offset="0" stop-color="${p.steelLight}"/><stop offset="0.6" stop-color="${p.steel}"/><stop offset="1" stop-color="${p.steelShade}"/>
+        </radialGradient>
+        <radialGradient id="wb-core-${uid}" cx="50%" cy="50%" r="60%">
+          <stop offset="0" stop-color="#ffffff"/><stop offset="0.5" stop-color="${p.core}"/><stop offset="1" stop-color="${p.amberShade}"/>
+        </radialGradient>
+      </defs>
+      <!-- thread hook on top of the helmet -->
+      <path d="M50 ${GRIP_Y} V22" stroke="${p.metal}" stroke-width="2.4" stroke-linecap="round"/>
+      <circle cx="50" cy="${GRIP_Y + 1}" r="3.2" fill="none" stroke="${p.metal}" stroke-width="2.2"/>
+
+      <!-- jet exhaust (hidden until boosting) -->
+      <g class="bolt-jet bolt-jet-l">${flame(42, 106)}</g>
+      <g class="bolt-jet bolt-jet-r">${flame(58, 106)}</g>
+
+      <!-- back arm -->
+      <g class="bolt-arm bolt-arm-l">${limb('M37 57 Q31 67 31 77', p.steelShade, 5)}${hand(31, 77)}</g>
+
+      <!-- legs -->
+      <g class="bolt-leg bolt-leg-l">${limb('M45 82 Q43 93 42 102', p.steel, 6)}${boot(42, 104)}</g>
+      <g class="bolt-leg bolt-leg-r">${limb('M55 82 Q57 93 58 102', p.steel, 6)}${boot(58, 104)}</g>
+
+      <!-- torso -->
+      <g class="bolt-torso">
+        <ellipse cx="50" cy="70" rx="19" ry="20.5" fill="${O}"/>
+        <ellipse cx="50" cy="70" rx="17" ry="18.5" fill="url(#wb-torso-${uid})"/>
+        <path d="M50 53 V88" stroke="${p.steelShade}" stroke-width="1.4" opacity="0.5"/>
+        <path d="M33 66 Q50 60 67 66" fill="none" stroke="${p.amber}" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="50" cy="72" r="6.4" fill="${O}"/>
+        <circle cx="50" cy="72" r="4.8" fill="url(#wb-core-${uid})"/>
+        <ellipse cx="44" cy="62" rx="4" ry="2.4" fill="#ffffff" opacity="0.3" transform="rotate(-24 44 62)"/>
+      </g>
+
+      <!-- front arm -->
+      <g class="bolt-arm bolt-arm-r">${limb('M63 57 Q69 67 69 77', p.steel, 5)}${hand(69, 77)}</g>
+
+      <!-- head / helmet -->
+      <g class="bolt-head">
+        <path d="M50 22 Q46 24 47 30 L53 30 Q54 24 50 22 z" fill="${p.amber}" stroke="${O}" stroke-width="1.6" stroke-linejoin="round"/>
+        <ellipse cx="50" cy="40" rx="16.5" ry="15.5" fill="${O}"/>
+        <ellipse cx="50" cy="40" rx="14.8" ry="13.8" fill="url(#wb-torso-${uid})"/>
+        <path d="M37 40 Q50 33 63 40 Q50 36 37 40 z" fill="${p.steelLight}" opacity="0.6"/>
+        <path d="M39 42 Q50 38 61 42 L60 47 Q50 52 40 47 z" fill="${p.visorDark}" stroke="${O}" stroke-width="1.4" stroke-linejoin="round"/>
+        <path d="M41 43.4 Q50 40.4 59 43.4 L58.4 45.6 Q50 43 41.6 45.6 z" fill="${p.visor}"/>
+        <path d="M43 44 Q50 42 57 44" stroke="#ffffff" stroke-width="1" opacity="0.8" stroke-linecap="round" fill="none"/>
+        <circle cx="34.5" cy="40" r="2.6" fill="${p.metal}" stroke="${O}" stroke-width="1.2"/>
+        <circle cx="65.5" cy="40" r="2.6" fill="${p.metal}" stroke="${O}" stroke-width="1.2"/>
+      </g>`;
   }
 
   /** Pixel-art frame: the sprite hangs from the grip point, its grip column on x = 50. */

@@ -55,6 +55,7 @@
     { id: 'webline-rainbow', name: 'Prismatic Web', description: 'A dazzling rainbow web line', category: 'webline', icon: '🌈', requirement: 'Rescue 50 tiny spiders', value: 'linear-gradient(180deg,#ff5d73,#ffb547,#5be38b,#4fb8ff,#a77bff)', progress: (s) => [n(s, 'spiderScore'), 50] },
 
     { id: 'theme-spidey', name: 'Spider-Man', description: 'Pixel-art Spider-Man that swings and hangs', category: 'theme', icon: '🕷️', requirement: 'Ready from the start', value: 'spidey', progress: () => [1, 1] },
+    { id: 'theme-bolt', name: 'Boltling', description: 'An original jet hero who runs, climbs and rockets around', category: 'theme', icon: '🚀', requirement: 'Ready from the start', value: 'bolt', progress: () => [1, 1] },
 
     { id: 'bubble-pixel', name: 'Pixel Talk', description: 'A retro pixel speech bubble', category: 'bubble', icon: '👾', requirement: 'Complete your first daily water goal', value: 'pixel', progress: (s) => [n(s, 'hydrationGoalsCompleted'), 1] },
     { id: 'bubble-night', name: 'Night Owl', description: 'A dark, glowing speech bubble', category: 'bubble', icon: '🦉', requirement: 'Summon Webling 10 times', value: 'night', progress: (s) => [n(s, 'summonCount'), 10] },

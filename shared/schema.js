@@ -31,7 +31,7 @@
   const SETTING_KEYS = [
     'enabled', 'personality', 'characterSize', 'startPosition', 'rememberPosition',
     'swingToClicks', 'showFocusIndicator', 'showHydrationWidget', 'spidersEnabled',
-    'showSpeechBubbles', 'quietMode', 'greetOnPageLoad', 'mishapFrequency', 'wanderFrequency', 'webZip', 'focusNudges',
+    'showSpeechBubbles', 'quietMode', 'greetOnPageLoad', 'mishapFrequency', 'wanderFrequency', 'webZip', 'focusNudges', 'soundEnabled',
     'webLineColor', 'reducedMotion', 'notificationsEnabled', 'toolbarBadge',
     'hydrationRemindersEnabled', 'hydrationReminderInterval', 'hydrationTarget',
     'quietHoursEnabled', 'quietHoursStart', 'quietHoursEnd', 'videoDimming',
@@ -59,6 +59,7 @@
     wanderFrequency: 'off',
     webZip: true,
     focusNudges: true,
+    soundEnabled: true,
     webLineColor: '#e9f2ff',
     reducedMotion: false,
     notificationsEnabled: true,
@@ -106,7 +107,7 @@
 
     // — Progression —
     achievements: Object.freeze({}),
-    cosmeticsUnlocked: Object.freeze(['theme-spidey']),
+    cosmeticsUnlocked: Object.freeze(['theme-spidey', 'theme-bolt']),
     equippedCosmetics: Object.freeze({ theme: 'theme-spidey' }),
 
     // — Misc —
@@ -331,6 +332,7 @@
     wanderFrequency: V.oneOf(WANDER_FREQS),
     webZip: V.bool(),
     focusNudges: V.bool(),
+    soundEnabled: V.bool(),
     webLineColor: V.color(),
     reducedMotion: V.bool(),
     notificationsEnabled: V.bool(),
