@@ -134,6 +134,8 @@ h1 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.01em; }
 
 .btn-summon { width: 100%; padding: 12px 14px; font-size: 14px; border-radius: 14px; background: linear-gradient(135deg, var(--brand), #8a5cf0); }
 .btn-summon svg { width: 18px; height: 18px; }
+#battleBtn { margin-top: 8px; color: #fff; background: linear-gradient(135deg, #e0412f, #f59e0b); box-shadow: 0 6px 16px rgba(224, 65, 47, .28); }
+#battleBtn:hover:not(:disabled) { filter: brightness(1.08); }
 .kbd { font: 700 10.5px var(--mono); padding: 3px 6px; border-radius: 6px; background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.25); }
 .list .kbd, .card .kbd { background: var(--card-2); border-color: var(--line); color: var(--muted); }
 .kbd:empty { display: none; }

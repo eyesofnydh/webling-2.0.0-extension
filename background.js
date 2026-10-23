@@ -440,7 +440,7 @@ async function addWater(delta) {
 // Summon / snooze
 // ---------------------------------------------------------------------------
 
-async function summonInActiveTab() {
+async function summonInActiveTab(message = { type: 'WEBLING_SUMMON' }) {
   const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
   // tab.url is visible thanks to activeTab (popup click / shortcut). If it's
   // unknown we still try — injection fails cleanly on restricted pages.
@@ -460,7 +460,7 @@ async function summonInActiveTab() {
   });
   await chrome.alarms.clear(ALARM.SNOOZE);
   try {
-    await sendToTabOrInject(tab.id, { type: 'WEBLING_SUMMON' });
+    await sendToTabOrInject(tab.id, message);
     return { success: true };
   } catch (err) {
     return { success: false, reason: 'unsupported_page', error: String(err && err.message) };
@@ -630,6 +630,10 @@ const handlers = {
   async SUMMON_WEBLING() {
     await updateWithProgression((s) => ({ summonCount: s.summonCount + 1 }));
     return summonInActiveTab();
+  },
+
+  async START_BATTLE() {
+    return summonInActiveTab({ type: 'WEBLING_BATTLE' });
   },
 
   async SAVE_POSITION(msg) {

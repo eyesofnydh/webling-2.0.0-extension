@@ -107,7 +107,7 @@
 
     // — Progression —
     achievements: Object.freeze({}),
-    cosmeticsUnlocked: Object.freeze(['theme-spidey', 'theme-bolt']),
+    cosmeticsUnlocked: Object.freeze(['theme-spidey', 'theme-bolt', 'theme-nova', 'theme-smash']),
     equippedCosmetics: Object.freeze({ theme: 'theme-spidey' }),
 
     // — Misc —

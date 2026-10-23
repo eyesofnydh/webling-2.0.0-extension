@@ -55,10 +55,23 @@
     // Its limbs are separate <g> groups the content script animates per pose (run, climb, boost…).
     // An original design — steel-blue armour, amber trim, a cyan visor and jet boots.
     bolt: {
-      articulated: true,
-      steel: '#44588a', steelLight: '#6f88bf', steelShade: '#2b3a63', outline: '#101a2e',
-      amber: '#ffb63d', amberShade: '#d98a24', visor: '#78e8ff', visorDark: '#0c3a4b',
-      metal: '#9aa7c4', core: '#ffe08a',
+      articulated: true, kind: 'flyer', power: 'beam',
+      steel: '#c7312f', steelLight: '#f36a52', steelShade: '#8e1a1f', outline: '#2a0708',
+      amber: '#ffcf4d', amberShade: '#d99f26', visor: '#aef2ff', visorDark: '#0c3a4b',
+      metal: '#e8b84a', core: '#ffe08a', suit: '#24262e', suitLight: '#3c414e',
+    },
+    // Second flyer — crimson/white winged hero, same jointed rig as Boltling.
+    nova: {
+      articulated: true, kind: 'flyer', power: 'nova', wings: true,
+      steel: '#7b3fd0', steelLight: '#a978f0', steelShade: '#521f99', outline: '#1c0a38',
+      amber: '#ffd24a', amberShade: '#d9a62a', visor: '#8ef0ff', visorDark: '#0c3a4b',
+      metal: '#e4d8f7', core: '#d7a0ff', suit: '#22192f', suitLight: '#3d2f55',
+    },
+    // Brute — an original rock golem with glowing lava cracks. Leaps and ground-pounds.
+    smash: {
+      articulated: true, kind: 'brute', power: 'pound',
+      rock: '#4e8f4a', rockLight: '#7cc471', rockShade: '#356336', outline: '#122a12',
+      crack: '#ff7a2c', crackLight: '#ffd36b', metal: '#9ab98c',
     },
   });
 
@@ -229,7 +242,7 @@
    */
   function frameMarkup(name, p, uid, acc = '') {
     if (p.sprites) return spriteMarkup(name, p);
-    if (p.articulated) return boltMarkup(p, uid);
+    if (p.articulated) return p.kind === 'brute' ? bruteMarkup(p, uid) : heroMarkup(p, uid);
     let s = defs(p, uid);
     switch (name) {
       case 'anticipate': {
@@ -294,75 +307,247 @@
     return s;
   }
 
+  // ---------------------------------------------------------------------------
+  // Jointed heroes (Boltling / Nova / Rumble)
+  // ---------------------------------------------------------------------------
+  //
+  // Every jointed hero shares one rig, so a single pose library animates them all:
+  //   .j-body (waist) → .j-head (neck), .j-sho-* (shoulder) → .j-elb-* (elbow)
+  //   .j-hip-* (hip) → .j-knee-* (knee) → .jet (boot nozzle, flyers only)
+  // Each joint is a <g> whose transform-origin is its pivot in viewBox units; the
+  // content script rotates joints per pose. The rest pose faces right; "-l" limbs
+  // are the far side (drawn first and darker), "-r" the near side.
+  // The thread grip is unused: only Spider-Man travels on a web line.
+
+  const r2 = (n) => Math.round(n * 100) / 100;
+
+  /** Tapered capsule from (x1, y1) to (x2, y2), width w1 → w2. */
+  function seg(x1, y1, x2, y2, w1, w2) {
+    const len = Math.hypot(x2 - x1, y2 - y1) || 1;
+    const nx = -(y2 - y1) / len;
+    const ny = (x2 - x1) / len;
+    const pt = (x, y, w, s) => `${r2(x + (nx * w * s) / 2)} ${r2(y + (ny * w * s) / 2)}`;
+    return `M${pt(x1, y1, w1, 1)} L${pt(x2, y2, w2, 1)} A${r2(w2 / 2)} ${r2(w2 / 2)} 0 0 0 ${pt(x2, y2, w2, -1)}`
+      + ` L${pt(x1, y1, w1, -1)} A${r2(w1 / 2)} ${r2(w1 / 2)} 0 0 0 ${pt(x1, y1, w1, 1)} Z`;
+  }
+
   /**
-   * Original jointed hero ("Boltling"). Pose-agnostic: returns one upright figure
-   * with each limb in its own <g> so the content script animates the run/climb/boost
-   * cycles in CSS. The thread attaches to the hook on his helmet at (50, GRIP_Y).
+   * A joint: rotates its contents about (x, y). `rest` is the relaxed angle used
+   * wherever no pose styles are loaded (popup, onboarding, icons); the content
+   * script's pose CSS overrides it on the page.
    */
-  function boltMarkup(p, uid) {
+  const joint = (name, x, y, inner, rest = 0) =>
+    `<g class="j j-${name}" style="transform-origin:${x}px ${y}px"${rest ? ` transform="rotate(${rest})"` : ''}>${inner}</g>`;
+
+  /** Relaxed standing angles (degrees, clockwise) for each rig. */
+  const REST = {
+    flyer: { 'hip-l': 4, 'knee-l': 14, 'hip-r': -6, 'knee-r': 24, 'sho-l': 8, 'elb-l': -16, 'sho-r': -4, 'elb-r': -22 },
+    brute: { body: 5, 'hip-l': -8, 'knee-l': 16, 'hip-r': -4, 'knee-r': 14, 'sho-l': -4, 'elb-l': -12, 'sho-r': -8, 'elb-r': -16 },
+  };
+
+  /** Filled, outlined path in the rig's line style. */
+  const part = (O, d, fill, w = 1.4) => `<path d="${d}" fill="${fill}" stroke="${O}" stroke-width="${w}" stroke-linejoin="round"/>`;
+
+  const lin = (id, stops, vertical = false) =>
+    `<linearGradient id="${id}" x1="0" y1="0" x2="${vertical ? 0 : 1}" y2="${vertical ? 1 : 0}">`
+    + stops.map(([o, c, a = 1]) => `<stop offset="${o}" stop-color="${c}" stop-opacity="${a}"/>`).join('')
+    + '</linearGradient>';
+  const rad = (id, stops) =>
+    `<radialGradient id="${id}" cx="36%" cy="26%" r="88%">`
+    + stops.map(([o, c]) => `<stop offset="${o}" stop-color="${c}"/>`).join('')
+    + '</radialGradient>';
+
+  /**
+   * Armoured flyer — Boltling (red/gold, swept crest, lightning emblem) and Nova
+   * (purple, temple fins, star emblem, swept wings). Dark undersuit under armour
+   * plates, light from the upper left with a rim light on the right edge, steady
+   * jet cones at the boot nozzles (scaled by the content script's --thrust).
+   */
+  function heroMarkup(p, uid) {
     const O = p.outline;
-    // Underlaid outline + coloured stroke, the look used for the vector character's legs.
-    const limb = (d, col, w) =>
-      `<path d="${d}" fill="none" stroke="${O}" stroke-width="${w + 3}" stroke-linecap="round" stroke-linejoin="round"/>` +
-      `<path d="${d}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/>`;
-    const boot = (x, y) =>
-      `<ellipse cx="${x}" cy="${y}" rx="5.4" ry="4.2" fill="${O}"/>` +
-      `<ellipse cx="${x}" cy="${y - 0.4}" rx="4" ry="3" fill="${p.amber}"/>`;
-    const hand = (x, y) =>
-      `<circle cx="${x}" cy="${y}" r="4.3" fill="${O}"/><circle cx="${x}" cy="${y}" r="3" fill="${p.metal}"/>`;
-    const flame = (x, y) =>
-      `<path d="M${x - 4} ${y} Q${x} ${y + 3} ${x} ${y + 15} Q${x} ${y + 3} ${x + 4} ${y} Q${x} ${y + 6} ${x - 4} ${y} z" fill="${p.amber}"/>` +
-      `<path d="M${x - 2.2} ${y + 1} Q${x} ${y + 4} ${x} ${y + 9} Q${x} ${y + 4} ${x + 2.2} ${y + 1} Q${x} ${y + 5} ${x - 2.2} ${y + 1} z" fill="#fff6d0"/>`;
+    const nova = p.power === 'nova';
+    const A = `url(#a-${uid})`;
+    const AF = `url(#af-${uid})`;
+    const S = `url(#s-${uid})`;
+    const SF = `url(#sf-${uid})`;
+    const T = `url(#t-${uid})`;
+    const C = `url(#c-${uid})`;
+    const J = (n, x, y, inner) => joint(n, x, y, inner, REST.flyer[n]);
 
-    return `<defs>
-        <radialGradient id="wb-torso-${uid}" cx="40%" cy="28%" r="80%">
-          <stop offset="0" stop-color="${p.steelLight}"/><stop offset="0.6" stop-color="${p.steel}"/><stop offset="1" stop-color="${p.steelShade}"/>
-        </radialGradient>
-        <radialGradient id="wb-core-${uid}" cx="50%" cy="50%" r="60%">
-          <stop offset="0" stop-color="#ffffff"/><stop offset="0.5" stop-color="${p.core}"/><stop offset="1" stop-color="${p.amberShade}"/>
-        </radialGradient>
-      </defs>
-      <!-- thread hook on top of the helmet -->
-      <path d="M50 ${GRIP_Y} V22" stroke="${p.metal}" stroke-width="2.4" stroke-linecap="round"/>
-      <circle cx="50" cy="${GRIP_Y + 1}" r="3.2" fill="none" stroke="${p.metal}" stroke-width="2.2"/>
+    const leg = (side, x) => {
+      const far = side === 'l';
+      const armor = far ? AF : A;
+      const knee = 98;
+      const sole = 119.6;
+      const flame = `<g class="jet" style="transform-origin:${x}px ${sole}px" opacity="0">`
+        + `<path d="M${x - 3.4} ${sole} C${x - 3.9} 126 ${x - 1.3} 134 ${x} 141 C${x + 1.3} 134 ${x + 3.9} 126 ${x + 3.4} ${sole} Z" fill="url(#fl-${uid})"/>`
+        + `<path class="flame-core" d="M${x - 1.7} ${sole} C${x - 1.9} 124 ${x - 0.6} 128.5 ${x} 132 C${x + 0.6} 128.5 ${x + 1.9} 124 ${x + 1.7} ${sole} Z" fill="#f2fcff"/>`
+        + '</g>';
+      const boot = part(O, `M${x - 4.4} 107.6 L${x + 4.6} 107.6 L${x + 5.6} 116 C${x + 5.8} 118.6 ${x + 4.8} ${sole} ${x + 3} ${sole} L${x - 3.4} ${sole} C${x - 5} ${sole} ${x - 5.6} 118.4 ${x - 5.2} 116.6 Z`, armor)
+        + `<path d="M${x - 5.2} 116.2 H${x + 5.6}" stroke="${p.amber}" stroke-width="1.5"/>`
+        + `<ellipse cx="${x}" cy="${sole}" rx="2.9" ry="1.1" fill="${p.metal}" stroke="${O}" stroke-width=".8"/>`;
+      const shin = part(O, seg(x, knee, x, 109.5, 6.8, 5.8), armor) + boot
+        + part(O, `M${x - 2.4} ${knee - 2.8} L${x + 3.4} ${knee - 3.2} L${x + 4.2} ${knee + 1.4} L${x + 0.4} ${knee + 3.4} L${x - 2.2} ${knee + 1.8} Z`, T, 1)
+        + `<circle class="jet-nz" cx="${x}" cy="124" r=".6" fill="none"/>`;
+      const thigh = part(O, seg(x, 84, x, knee, 8.6, 6.8), far ? SF : S)
+        + part(O, seg(x + 0.9, 86.6, x + 0.7, 95, 5.6, 4.6), armor, 1.1);
+      return J(`hip-${side}`, x, 84, thigh + J(`knee-${side}`, x, knee, flame + shin));
+    };
 
-      <!-- jet exhaust (hidden until boosting) -->
-      <g class="bolt-jet bolt-jet-l">${flame(42, 106)}</g>
-      <g class="bolt-jet bolt-jet-r">${flame(58, 106)}</g>
+    const arm = (side, x) => {
+      const far = side === 'l';
+      const armor = far ? AF : A;
+      const sy = 52;
+      const ex = x + (far ? -1 : 1);
+      const ey = 64.5;
+      const hy = 77.6;
+      const fist = part(O, `M${ex - 3.9} ${hy - 3} Q${ex - 4.3} ${hy + 3.6} ${ex} ${hy + 4} Q${ex + 4.4} ${hy + 3.8} ${ex + 4} ${hy - 2.6} Q${ex} ${hy - 4.6} ${ex - 3.9} ${hy - 3} Z`, armor)
+        + `<path d="M${ex - 2.6} ${hy + 0.4} Q${ex} ${hy + 1.4} ${ex + 2.8} ${hy + 0.6}" stroke="${O}" stroke-width=".7" fill="none" opacity=".6"/>`;
+      const fore = part(O, seg(ex, ey, ex, hy - 3, 5.6, 6.6), armor)
+        + `<path d="M${ex - 3.3} ${hy - 5} H${ex + 3.3}" stroke="${p.amber}" stroke-width="1.5" stroke-linecap="round"/>` + fist;
+      const upper = part(O, seg(x, sy + 1, ex, ey, 6.2, 5.4), far ? SF : S);
+      const pauldron = part(O, `M${x - 6} ${sy + 2.5} C${x - 6.4} ${sy - 4} ${x - 2} ${sy - 6} ${x + 1} ${sy - 5.6} C${x + 5} ${sy - 5} ${x + 6.6} ${sy - 1.6} ${x + 5.6} ${sy + 3} C${x + 2} ${sy + 4.6} ${x - 3} ${sy + 4.8} ${x - 6} ${sy + 2.5} Z`, armor)
+        + `<path d="M${x - 5} ${sy + 2.2} C${x - 1} ${sy + 3.6} ${x + 2.5} ${sy + 3.4} ${x + 5.2} ${sy + 2.4}" stroke="${p.amber}" stroke-width="1.3" fill="none"/>`;
+      return J(`sho-${side}`, x, sy, upper + J(`elb-${side}`, ex, ey, fore) + pauldron);
+    };
 
-      <!-- back arm -->
-      <g class="bolt-arm bolt-arm-l">${limb('M37 57 Q31 67 31 77', p.steelShade, 5)}${hand(31, 77)}</g>
+    // Swept wings grow from the back (left, since he faces right); the near wing is larger and lighter.
+    const wing = (side, px, py, k, fill) => {
+      const X = (d) => r2(px - d * k);
+      const Y = (d) => r2(py + d * k);
+      return J(`wing-${side}`, px, py,
+        part(O, `M${X(0)} ${Y(0)} L${X(27)} ${Y(-13)} L${X(21)} ${Y(-3.5)} L${X(31)} ${Y(1)} L${X(19)} ${Y(5.5)} L${X(24)} ${Y(13)} L${X(2)} ${Y(9)} Z`, fill)
+        + `<path d="M${X(2)} ${Y(2)} L${X(22)} ${Y(-7)}" stroke="${p.amber}" stroke-width="1.2" stroke-linecap="round"/>`);
+    };
 
-      <!-- legs -->
-      <g class="bolt-leg bolt-leg-l">${limb('M45 82 Q43 93 42 102', p.steel, 6)}${boot(42, 104)}</g>
-      <g class="bolt-leg bolt-leg-r">${limb('M55 82 Q57 93 58 102', p.steel, 6)}${boot(58, 104)}</g>
+    const emblem = nova
+      ? `<path d="M50 51.2 L51.6 55.6 L56 57.2 L51.6 58.8 L50 63.2 L48.4 58.8 L44 57.2 L48.4 55.6 Z" fill="${T}" stroke="${O}" stroke-width=".9" stroke-linejoin="round"/>`
+      : `<path d="M52.4 50.8 L46.4 58.6 L50.2 58.6 L47.8 64.6 L54.4 55.8 L50.6 55.8 L53.2 50.8 Z" fill="${T}" stroke="${O}" stroke-width=".9" stroke-linejoin="round"/>`;
 
-      <!-- torso -->
-      <g class="bolt-torso">
-        <ellipse cx="50" cy="70" rx="19" ry="20.5" fill="${O}"/>
-        <ellipse cx="50" cy="70" rx="17" ry="18.5" fill="url(#wb-torso-${uid})"/>
-        <path d="M50 53 V88" stroke="${p.steelShade}" stroke-width="1.4" opacity="0.5"/>
-        <path d="M33 66 Q50 60 67 66" fill="none" stroke="${p.amber}" stroke-width="3" stroke-linecap="round"/>
-        <circle cx="50" cy="72" r="6.4" fill="${O}"/>
-        <circle cx="50" cy="72" r="4.8" fill="url(#wb-core-${uid})"/>
-        <ellipse cx="44" cy="62" rx="4" ry="2.4" fill="#ffffff" opacity="0.3" transform="rotate(-24 44 62)"/>
-      </g>
+    const chest = '<g class="chest">'
+      + part(O, 'M42.6 75.5 L57.4 75.5 L57 82.6 L43 82.6 Z', S)
+      + `<path d="M44.4 78.6 H55.6" stroke="${p.suitLight}" stroke-width=".8" opacity=".7"/>`
+      + part(O, 'M33.6 49.4 C40 46.4 60 46.4 66.4 49.4 L65 60.2 C63 69 58.8 74.6 55.6 77 L44.4 77 C41.2 74.6 37 69 35 60.2 Z', C)
+      + `<path d="M39.6 58.6 C45 61.6 55 61.6 60.4 58.6" stroke="${p.steelShade}" stroke-width="1" fill="none" opacity=".6"/>`
+      + `<path d="M44.6 70.4 L50 72.6 L55.4 70.4" stroke="${p.steelShade}" stroke-width=".9" fill="none" opacity=".5"/>`
+      + `<path d="M64.6 51.4 L63.4 60.6 C62 67 59.6 71.6 57.4 74.2" stroke="${p.steelLight}" stroke-width="1.1" fill="none" opacity=".55" stroke-linecap="round"/>`
+      + '<ellipse cx="41.4" cy="53.4" rx="3.6" ry="1.7" fill="#fff" opacity=".28" transform="rotate(-18 41.4 53.4)"/>'
+      + emblem
+      + part(O, 'M41.8 80.6 L58.2 80.6 L58.6 84.4 L41.4 84.4 Z', T, 1)
+      + `<rect x="48" y="80.4" width="4" height="4.2" rx=".8" fill="${p.amberShade}" stroke="${O}" stroke-width=".8"/>`
+      + '</g>';
 
-      <!-- front arm -->
-      <g class="bolt-arm bolt-arm-r">${limb('M63 57 Q69 67 69 77', p.steel, 5)}${hand(69, 77)}</g>
+    const crest = nova
+      ? part(O, 'M43.6 24.6 L33.4 17.4 L36.2 21.8 L31.6 21.6 L41.6 29.4 Z', T, 1.1)
+      : part(O, 'M47 17.6 L36.4 10.8 L40.2 20.6 Z', T, 1.1);
+    const head = J('head', 50, 46,
+      crest
+      + part(O, 'M37.6 31 C37.6 21.4 43 16.6 50.6 16.6 C58.6 16.6 63.6 22 63.6 30 L62.7 37.6 C61.7 42 57.6 45 52.6 45 L46 45 C40.6 44.6 37.6 40.2 37.6 34.2 Z', C)
+      + `<path d="M60 19.6 C62.8 22.2 63.6 26 63.4 30" stroke="${p.steelLight}" stroke-width="1.2" fill="none" opacity=".6" stroke-linecap="round"/>`
+      + `<path d="M47.2 37.8 L62.2 36.4 L61.6 39.8 C59.2 43 55.4 44.2 52.4 44.2 L48.2 43.8 Z" fill="${p.steelShade}" opacity=".45"/>`
+      + `<circle cx="43.8" cy="31.8" r="2.9" fill="${p.metal}" stroke="${O}" stroke-width="1"/><circle cx="43.8" cy="31.8" r="1.1" fill="${p.amberShade}"/>`
+      + part(O, 'M48.4 26.4 L63.4 25.4 L63 32.6 C58.4 34 52.4 34.3 49 33.5 Z', `url(#v-${uid})`, 1.1)
+      + '<path d="M50.2 27.6 L61.8 26.9" stroke="#fff" stroke-width=".9" opacity=".85" stroke-linecap="round"/>');
 
-      <!-- head / helmet -->
-      <g class="bolt-head">
-        <path d="M50 22 Q46 24 47 30 L53 30 Q54 24 50 22 z" fill="${p.amber}" stroke="${O}" stroke-width="1.6" stroke-linejoin="round"/>
-        <ellipse cx="50" cy="40" rx="16.5" ry="15.5" fill="${O}"/>
-        <ellipse cx="50" cy="40" rx="14.8" ry="13.8" fill="url(#wb-torso-${uid})"/>
-        <path d="M37 40 Q50 33 63 40 Q50 36 37 40 z" fill="${p.steelLight}" opacity="0.6"/>
-        <path d="M39 42 Q50 38 61 42 L60 47 Q50 52 40 47 z" fill="${p.visorDark}" stroke="${O}" stroke-width="1.4" stroke-linejoin="round"/>
-        <path d="M41 43.4 Q50 40.4 59 43.4 L58.4 45.6 Q50 43 41.6 45.6 z" fill="${p.visor}"/>
-        <path d="M43 44 Q50 42 57 44" stroke="#ffffff" stroke-width="1" opacity="0.8" stroke-linecap="round" fill="none"/>
-        <circle cx="34.5" cy="40" r="2.6" fill="${p.metal}" stroke="${O}" stroke-width="1.2"/>
-        <circle cx="65.5" cy="40" r="2.6" fill="${p.metal}" stroke="${O}" stroke-width="1.2"/>
-      </g>`;
+    const defs = '<defs>'
+      + lin(`a-${uid}`, [[0, p.steelLight], [0.45, p.steel], [1, p.steelShade]])
+      + lin(`af-${uid}`, [[0, p.steel], [0.55, p.steelShade], [1, p.steelShade]])
+      + lin(`s-${uid}`, [[0, p.suitLight], [0.5, p.suit], [1, p.suit]])
+      + lin(`sf-${uid}`, [[0, p.suit], [1, p.suit]])
+      + lin(`t-${uid}`, [[0, '#fff4c8'], [0.3, p.amber], [1, p.amberShade]], true)
+      + lin(`v-${uid}`, [[0, '#ffffff'], [0.35, p.visor], [1, p.visorDark]], true)
+      + lin(`fl-${uid}`, [[0, '#fffbea'], [0.22, '#ffe08a'], [0.55, '#ff9a3c'], [1, '#ff5028', 0]], true)
+      + lin(`w-${uid}`, [[0, p.metal], [0.6, p.steelLight], [1, p.steel]])
+      + lin(`wf-${uid}`, [[0, p.steelLight], [1, p.steelShade]])
+      + rad(`c-${uid}`, [[0, p.steelLight], [0.55, p.steel], [1, p.steelShade]])
+      + '</defs>';
+
+    const body = J('body', 50, 82,
+      (nova ? wing('l', 45, 56, 0.86, `url(#wf-${uid})`) + wing('r', 46, 53, 1, `url(#w-${uid})`) : '')
+      + arm('l', 36)
+      + `<rect x="46.2" y="42.5" width="7.6" height="6.5" rx="2" fill="${S}" stroke="${O}" stroke-width="1.4"/>`
+      + chest
+      + head
+      + arm('r', 64));
+
+    return defs
+      + leg('l', 45)
+      + leg('r', 55)
+      + part(O, 'M42 82.5 L58 82.5 L59.4 88 C55 90.6 45 90.6 40.6 88 Z', S)
+      + body;
+  }
+
+  /**
+   * Rock-golem brute — Rumble. Same rig as the flyers, built heavy: a hunched
+   * slab torso, boulder shoulders, long arms with oversized fists, short thick
+   * legs, a small sunken head with glowing eyes, and lava cracks. No jets.
+   */
+  function bruteMarkup(p, uid) {
+    const O = p.outline;
+    const R = `url(#r-${uid})`;
+    const RF = `url(#rf-${uid})`;
+    const RC = `url(#rc-${uid})`;
+    const J = (n, x, y, inner) => joint(n, x, y, inner, REST.brute[n]);
+    const crack = (d) =>
+      `<path d="${d}" stroke="${p.crack}" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`
+      + `<path d="${d}" stroke="${p.crackLight}" stroke-width=".7" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+
+    const leg = (side, x) => {
+      const rock = side === 'l' ? RF : R;
+      const foot = part(O, `M${x - 8} 109.6 L${x + 7} 109.4 L${x + 8.6} 116.4 C${x + 8.8} 118.8 ${x + 7.4} 119.8 ${x + 5} 119.8 L${x - 6.4} 119.8 C${x - 8.4} 119.8 ${x - 9.2} 118.4 ${x - 8.8} 116.6 Z`, rock)
+        + `<path d="M${x - 3} 116 L${x - 2.4} 119.6 M${x + 2.6} 116 L${x + 3} 119.6" stroke="${O}" stroke-width=".8" opacity=".6"/>`;
+      const shin = part(O, seg(x, 100, x, 110, 10.6, 11.6), rock) + foot;
+      const thigh = part(O, seg(x, 89, x, 100, 12.4, 10.6), rock);
+      return J(`hip-${side}`, x, 89, thigh + J(`knee-${side}`, x, 100, shin));
+    };
+
+    const arm = (side, x) => {
+      const far = side === 'l';
+      const rock = far ? RF : R;
+      const s = far ? -1 : 1;
+      const sy = 53;
+      const ex = x + s * 2;
+      const ey = 69;
+      const hx = x + s * 1.5;
+      const hy = 88;
+      const fist = part(O, `M${hx - 7.6} ${hy - 4.4} C${hx - 8.6} ${hy + 4} ${hx - 4} ${hy + 8.2} ${hx + 1} ${hy + 8} C${hx + 6.6} ${hy + 7.6} ${hx + 8.6} ${hy + 2.6} ${hx + 7.6} ${hy - 4.2} C${hx + 3} ${hy - 7.4} ${hx - 3.6} ${hy - 7.6} ${hx - 7.6} ${hy - 4.4} Z`, rock)
+        + `<path d="M${hx - 5} ${hy + 1.2} Q${hx} ${hy + 2.8} ${hx + 5} ${hy + 1.4}" stroke="${O}" stroke-width=".9" fill="none" opacity=".55"/>`;
+      const fore = part(O, seg(ex, ey, hx, hy - 5, 10, 12.4), rock)
+        + crack(`M${ex - s} ${ey + 4} L${ex + s * 1.4} ${ey + 8} L${ex - s * 0.6} ${ey + 12}`) + fist;
+      const upper = part(O, seg(x, sy + 2, ex, ey, 11.4, 9.8), rock);
+      const boulder = part(O, `M${x - 9.6} ${sy + 3} C${x - 10.4} ${sy - 5} ${x - 4} ${sy - 9.6} ${x + 1.4} ${sy - 9.2} C${x + 7.6} ${sy - 8.6} ${x + 10.4} ${sy - 3.4} ${x + 9.2} ${sy + 3.6} C${x + 4} ${sy + 6.6} ${x - 4} ${sy + 6.8} ${x - 9.6} ${sy + 3} Z`, rock)
+        + `<path d="M${x - 6} ${sy - 3} L${x - 1} ${sy - 5.4} L${x + 4} ${sy - 3.6}" stroke="${p.rockShade}" stroke-width=".9" fill="none" opacity=".7"/>`;
+      return J(`sho-${side}`, x, sy, upper + J(`elb-${side}`, ex, ey, fore) + boulder);
+    };
+
+    const chest = '<g class="chest">'
+      + part(O, 'M23 51 C30 42.4 70 42.4 77 51 L79.4 64.4 C78 78.4 67.6 88.6 50 89.4 C32.4 88.6 22 78.4 20.6 64.4 Z', RC)
+      + `<path d="M33 52.6 L50 57.4 L67 52.6 M50 57.4 L50 72 M36 72 H64" stroke="${p.rockShade}" stroke-width="1" fill="none" opacity=".6"/>`
+      + crack('M40.6 59.4 L44.2 65.6 L41.4 71.4 L45.4 78')
+      + crack('M59.6 58 L56.2 64.6 L60 69.8')
+      + `<path d="M76.6 52.6 L78.6 64.4 C77.6 74 72.8 81.4 66 85.6" stroke="${p.rockLight}" stroke-width="1.2" fill="none" opacity=".5" stroke-linecap="round"/>`
+      + '<ellipse cx="36" cy="54.6" rx="4.6" ry="2" fill="#fff" opacity=".2" transform="rotate(-16 36 54.6)"/>'
+      + '</g>';
+
+    const head = J('head', 50, 46,
+      part(O, 'M39.6 37 C39.6 27.4 44.6 23 50.6 23 C57 23 61.4 27.8 61.4 35 L60.6 40.6 C59 44.6 55 46.6 50.4 46.6 C45.4 46.6 41.4 44 40 40 Z', RC)
+      + part(O, 'M41.6 31.6 L59.6 30.6 L59 34 C55 33.6 46 34.2 42.4 35 Z', p.rockShade, 1)
+      + `<ellipse cx="47.6" cy="35.8" rx="3" ry="1.8" fill="${p.crack}" opacity=".4"/><ellipse cx="55.4" cy="35.4" rx="3" ry="1.8" fill="${p.crack}" opacity=".4"/>`
+      + `<path d="M45.6 35.6 L49.6 35.2 L49.4 36.6 L45.8 37 Z M53.4 35 L57.6 34.6 L57.4 36 L53.6 36.4 Z" fill="${p.crackLight}"/>`
+      + `<path d="M44.4 42 Q50.6 43.8 57 41.6" stroke="${p.rockShade}" stroke-width="1.3" fill="none" stroke-linecap="round"/>`
+      + crack('M58.4 37.6 L56.6 40.4'));
+
+    const defs = '<defs>'
+      + lin(`r-${uid}`, [[0, p.rockLight], [0.5, p.rock], [1, p.rockShade]])
+      + lin(`rf-${uid}`, [[0, p.rock], [1, p.rockShade]])
+      + rad(`rc-${uid}`, [[0, p.rockLight], [0.55, p.rock], [1, p.rockShade]])
+      + '</defs>';
+
+    return defs
+      + leg('l', 42)
+      + leg('r', 58)
+      + part(O, 'M37 85 L63 85 L65 92.4 C58.4 95.6 41.6 95.6 35 92.4 Z', RF)
+      + J('body', 50, 86, arm('l', 27) + chest + head + arm('r', 73));
   }
 
   /** Pixel-art frame: the sprite hangs from the grip point, its grip column on x = 50. */

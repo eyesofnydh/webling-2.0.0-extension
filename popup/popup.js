@@ -138,10 +138,12 @@ function renderSite() {
     dot.className = 'dot off';
     toggle.hidden = true;
     summon.disabled = true;
+    $('battleBtn').disabled = true;
     return;
   }
   toggle.hidden = !host;
   summon.disabled = false;
+  $('battleBtn').disabled = false;
   $('siteHost').textContent = host || 'Local file';
   const entry = Schema.findDisablingEntry(host, state.disabledSites);
 
@@ -428,6 +430,11 @@ function bind() {
     const resp = await send({ type: 'SUMMON_WEBLING' });
     if (resp && resp.success) window.close();
     else toast("Spider-Buddy can't visit this page");
+  });
+  $('battleBtn').addEventListener('click', async () => {
+    const resp = await send({ type: 'START_BATTLE' });
+    if (resp && resp.success) window.close();
+    else toast("The heroes can't fight on this page");
   });
 
   // Today
